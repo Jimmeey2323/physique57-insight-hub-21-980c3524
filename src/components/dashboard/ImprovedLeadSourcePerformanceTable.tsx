@@ -101,9 +101,9 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
     render: (value: any, item: any) => <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div onClick={() => toggleRowExpansion(value)} className="flex items-center gap-2 cursor-pointer">
+              <div onClick={() => toggleRowExpansion(value)} className="flex items-center gap-2 cursor-pointer text-white ">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
-                <span className="text-gray-900 font-bold">{value}</span>
+                <span className="text-gray-900 font-bold text-base">{value}</span>
                 <Button variant="ghost" size="sm" className="ml-2 opacity-60 hover:opacity-100 p-1 h-6 w-6">
                   <Eye className="w-3 h-3" />
                 </Button>
@@ -222,8 +222,8 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
   }
   return <Card className="bg-white shadow-xl border-0">
       <CardHeader className="pb-4 bg-gradient-to-r from-blue-800 to-indigo-900">
-        <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-blue-600" />
+        <CardTitle className="font-bold flex items-center gap-2 text-slate-50 text-3xl">
+          <BarChart3 className="w-6 h-6 text-yellow-200" />
           {title}
         </CardTitle>
       </CardHeader>
