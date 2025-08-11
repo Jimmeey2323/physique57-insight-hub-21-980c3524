@@ -1,113 +1,172 @@
-
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ModernDataTable } from '@/components/ui/ModernDataTable';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Users, Target, TrendingUp, Calendar, MapPin, User, DollarSign } from 'lucide-react';
 import { useSalesData } from '@/hooks/useSalesData';
-import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
-import { AlertTriangle, Database } from 'lucide-react';
-import { DiscountFilterSection } from './DiscountFilterSection';
-import { DiscountMetricsCards } from './DiscountMetricsCards';
-import { DiscountAnalyticsCharts } from './DiscountAnalyticsCharts';
-import { DiscountDataTable } from './DiscountDataTable';
-import { DiscountInteractiveTopBottomLists } from './DiscountInteractiveTopBottomLists';
-import { DiscountDistributionCharts } from './DiscountDistributionCharts';
-import { DiscountMonthOnMonthTable } from './DiscountMonthOnMonthTable';
-import { DiscountYearOnYearTable } from './DiscountYearOnYearTable';
-import { SourceDataModal } from '@/components/ui/SourceDataModal';
-import { Button } from '@/components/ui/button';
+import { usePayrollData } from '@/hooks/usePayrollData';
+import { formatCurrency, formatNumber, formatPercentage } from '@/utils/formatters';
 
-export const DiscountsSection: React.FC = () => {
-  const { data, loading, error } = useSalesData();
-  const [filters, setFilters] = useState<any>({});
-  const [isFilterCollapsed, setIsFilterCollapsed] = useState(false);
-  const [showSourceData, setShowSourceData] = useState(false);
+interface DiscountAnalysisData {
+  date: string;
+  location: string;
+  itemsSold: number;
+  mrpPreTax: number;
+  discountPercentage: number;
+  mrpPostTax: number;
+  tax: number;
+  totalRevenue: number;
+}
 
-  if (loading) {
-    return <LoadingSkeleton type="full-page" />;
-  }
+const DiscountsSection = () => {
+  const { data: salesData, loading, error } = useSalesData();
+  const { data: payrollData } = usePayrollData();
 
-  if (error) {
-    const errorMessage = typeof error === 'string' ? error : 'An unknown error occurred';
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-lg text-red-600">Error loading discount data</p>
-          <p className="text-sm text-gray-500">{errorMessage}</p>
-        </div>
-      </div>
-    );
-  }
+  // Transform SalesData to DiscountAnalysisData format
+  const discountData = useMemo(() => {
+    if (!salesData) return [];
+    
+    return salesData.map(item => ({
+      ...item,
+      location: item.storeCity || 'Unknown',
+      mrpPreTax: item.mrp || 0,
+      mrpPostTax: item.mrp || 0,
+      discountPercentage: item.discount || 0
+    }));
+  }, [salesData]);
 
-  const handleFiltersChange = (newFilters: any) => {
-    setFilters(newFilters);
-  };
-
-  const toggleFilterCollapse = () => {
-    setIsFilterCollapsed(!isFilterCollapsed);
-  };
-
-  // Prepare source data for modal
-  const sourceDefinitions = [
+  const discountColumns: Array<{
+    key: keyof DiscountAnalysisData;
+    header: string;
+    align?: 'left' | 'center' | 'right';
+    render?: (value: any, item: any) => React.ReactNode;
+  }> = [
     {
-      name: "Sales",
-      sheetName: "Sales",
-      spreadsheetId: "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI",
-      data: data || []
+      key: 'date',
+      header: 'Date',
+      align: 'left',
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-blue-600" />
+          <Badge className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 font-semibold">
+            {value}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      align: 'left',
+      render: (value: string) => (
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-gray-500" />
+          <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-semibold">
+            {value}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'itemsSold',
+      header: 'Items Sold',
+      align: 'center',
+      render: (value: number) => (
+        <Badge className="bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-bold">
+          {formatNumber(value)}
+        </Badge>
+      )
+    },
+    {
+      key: 'mrpPreTax',
+      header: 'MRP Pre-Tax',
+      align: 'right',
+      render: (value: number) => (
+        <div className="flex items-center justify-end gap-1">
+          <DollarSign className="w-4 h-4 text-green-600" />
+          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold">
+            {formatCurrency(value)}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'discountPercentage',
+      header: 'Discount %',
+      align: 'center',
+      render: (value: number) => (
+        <Badge className="bg-gradient-to-r from-red-100 to-red-200 text-red-800 font-semibold">
+          {formatPercentage(value)}
+        </Badge>
+      )
+    },
+    {
+      key: 'mrpPostTax',
+      header: 'MRP Post-Tax',
+      align: 'right',
+      render: (value: number) => (
+        <div className="flex items-center justify-end gap-1">
+          <DollarSign className="w-4 h-4 text-green-600" />
+          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold">
+            {formatCurrency(value)}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'tax',
+      header: 'Tax',
+      align: 'right',
+      render: (value: number) => (
+        <div className="flex items-center justify-end gap-1">
+          <DollarSign className="w-4 h-4 text-green-600" />
+          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold">
+            {formatCurrency(value)}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      key: 'totalRevenue',
+      header: 'Total Revenue',
+      align: 'right',
+      render: (value: number) => (
+        <div className="flex items-center justify-end gap-1">
+          <DollarSign className="w-4 h-4 text-green-600" />
+          <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold">
+            {formatCurrency(value)}
+          </Badge>
+        </div>
+      )
     }
   ];
 
   return (
-    <section className="space-y-6">
-      {/* Full width filter section */}
-      <div className="w-full">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Discount Analysis</CardTitle>
-              <p className="text-sm text-muted-foreground">Explore discount trends and their impact on sales.</p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowSourceData(true)}
-              className="flex items-center gap-2"
-            >
-              <Database className="w-4 h-4" />
-              View Source Data
-            </Button>
-          </CardHeader>
-          <CardContent className="w-full">
-            <DiscountFilterSection 
-              data={data} 
-              onFiltersChange={handleFiltersChange}
-              isCollapsed={isFilterCollapsed}
-              onToggleCollapse={toggleFilterCollapse}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      <DiscountMetricsCards data={data} filters={filters} />
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <DiscountAnalyticsCharts data={data} filters={filters} />
-        <DiscountDistributionCharts data={data} filters={filters} />
-      </div>
-
-      {/* Interactive Top/Bottom Lists - 50% width each */}
-      <DiscountInteractiveTopBottomLists data={data} filters={filters} />
-
-      <DiscountMonthOnMonthTable data={data} filters={filters} />
-
-      <DiscountYearOnYearTable data={data} filters={filters} />
-
-      <DiscountDataTable data={data} filters={filters} />
-
-      {/* Source Data Modal */}
-      <SourceDataModal
-        open={showSourceData}
-        onOpenChange={setShowSourceData}
-        sources={sourceDefinitions}
-      />
-    </section>
+    <Card className="bg-white shadow-xl border-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-orange-50 via-yellow-50 to-green-50 border-b border-gray-200">
+        <CardTitle className="flex items-center gap-3 text-xl font-bold">
+          <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-green-500 rounded-xl flex items-center justify-center">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          Discount Analysis
+          <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold">
+            {discountData.length} records
+          </Badge>
+        </CardTitle>
+        <p className="text-sm text-gray-600 mt-2">
+          Analysis of discounts applied and their impact on revenue
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ModernDataTable
+          data={discountData}
+          columns={discountColumns}
+          maxHeight="500px"
+        />
+      </CardContent>
+    </Card>
   );
 };
+
+export default DiscountsSection;

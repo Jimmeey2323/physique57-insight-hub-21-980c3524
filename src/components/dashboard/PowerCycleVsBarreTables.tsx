@@ -1,4 +1,3 @@
-
 import React, { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +19,12 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
   salesData,
   payrollData
 }) => {
+  // Helper function to safely format numbers
+  const safeToFixed = (value: any, decimals: number = 1): string => {
+    const num = typeof value === 'number' ? value : parseFloat(value);
+    return isNaN(num) ? '0.0' : num.toFixed(decimals);
+  };
+
   // Instructor performance analysis
   const instructorAnalysis = useMemo(() => {
     const instructors: Record<string, {
@@ -184,7 +189,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
 
   // Instructor table columns
   const instructorColumns: Array<{
-    key: 'name' | 'totalSessions' | 'powerCycleSessions' | 'barreSessions' | 'overallAvg' | 'powerCycleAvg' | 'barreAvg' | 'overallFillRate' | 'powerCycleAttendance' | 'barreAttendance' | 'totalAttendance' | 'powerCycleFillRate' | 'barreFillRate' | 'powerCycleCapacity' | 'barreCapacity' | 'totalCapacity';
+    key: keyof typeof instructorAnalysis[0];
     header: string;
     align?: 'left' | 'center' | 'right';
     render?: (value: any, item: any) => React.ReactNode;
@@ -238,7 +243,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-green-100 to-green-200 text-green-800 font-bold">
-          {value.toFixed(1)}
+          {safeToFixed(value)}
         </Badge>
       )
     },
@@ -248,7 +253,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge variant="outline" className="border-blue-300 text-blue-700 font-medium">
-          {value.toFixed(1)}
+          {safeToFixed(value)}
         </Badge>
       )
     },
@@ -258,7 +263,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge variant="outline" className="border-pink-300 text-pink-700 font-medium">
-          {value.toFixed(1)}
+          {safeToFixed(value)}
         </Badge>
       )
     },
@@ -267,12 +272,14 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       header: 'Fill Rate',
       align: 'center',
       render: (value: number) => {
-        const colorClass = value > 80 ? 'from-green-500 to-green-600' : 
-                          value > 60 ? 'from-yellow-500 to-yellow-600' : 
+        const numValue = typeof value === 'number' ? value : parseFloat(value);
+        const roundedValue = isNaN(numValue) ? 0 : Math.round(numValue);
+        const colorClass = roundedValue > 80 ? 'from-green-500 to-green-600' : 
+                          roundedValue > 60 ? 'from-yellow-500 to-yellow-600' : 
                           'from-red-500 to-red-600';
         return (
           <Badge className={`bg-gradient-to-r ${colorClass} text-white font-bold`}>
-            {Math.round(value)}%
+            {roundedValue}%
           </Badge>
         );
       }
@@ -281,7 +288,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
 
   // Monthly performance columns
   const monthlyColumns: Array<{
-    key: 'month' | 'powerCycleSessions' | 'barreSessions' | 'powerCycleAvg' | 'barreAvg' | 'powerCycleAttendance' | 'barreAttendance' | 'revenue' | 'powerCycleFillRate' | 'barreFillRate' | 'powerCycleCapacity' | 'barreCapacity';
+    key: keyof typeof monthlyPerformance[0];
     header: string;
     align?: 'left' | 'center' | 'right';
     render?: (value: any, item: any) => React.ReactNode;
@@ -345,7 +352,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge variant="outline" className="border-blue-300 text-blue-700 font-medium">
-          {value.toFixed(1)}
+          {safeToFixed(value)}
         </Badge>
       )
     },
@@ -355,7 +362,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge variant="outline" className="border-pink-300 text-pink-700 font-medium">
-          {value.toFixed(1)}
+          {safeToFixed(value)}
         </Badge>
       )
     },
@@ -397,9 +404,9 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       totalSessions: totals.totalSessions,
       powerCycleSessions: totals.powerCycleSessions,
       barreSessions: totals.barreSessions,
-      overallAvg: totals.totalSessions > 0 ? (totals.totalAttendance / totals.totalSessions).toFixed(1) : '0',
-      powerCycleAvg: totals.powerCycleSessions > 0 ? (totals.powerCycleAttendance / totals.powerCycleSessions).toFixed(1) : '0',
-      barreAvg: totals.barreSessions > 0 ? (totals.barreAttendance / totals.barreSessions).toFixed(1) : '0',
+      overallAvg: totals.totalSessions > 0 ? safeToFixed(totals.totalAttendance / totals.totalSessions) : '0.0',
+      powerCycleAvg: totals.powerCycleSessions > 0 ? safeToFixed(totals.powerCycleAttendance / totals.powerCycleSessions) : '0.0',
+      barreAvg: totals.barreSessions > 0 ? safeToFixed(totals.barreAttendance / totals.barreSessions) : '0.0',
       overallFillRate: '-'
     };
   }, [instructorAnalysis]);
@@ -425,8 +432,8 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       barreSessions: totals.barreSessions,
       powerCycleAttendance: totals.powerCycleAttendance,
       barreAttendance: totals.barreAttendance,
-      powerCycleAvg: totals.powerCycleSessions > 0 ? (totals.powerCycleAttendance / totals.powerCycleSessions).toFixed(1) : '0',
-      barreAvg: totals.barreSessions > 0 ? (totals.barreAttendance / totals.barreSessions).toFixed(1) : '0',
+      powerCycleAvg: totals.powerCycleSessions > 0 ? safeToFixed(totals.powerCycleAttendance / totals.powerCycleSessions) : '0.0',
+      barreAvg: totals.barreSessions > 0 ? safeToFixed(totals.barreAttendance / totals.barreSessions) : '0.0',
       revenue: totals.revenue
     };
   }, [monthlyPerformance]);
