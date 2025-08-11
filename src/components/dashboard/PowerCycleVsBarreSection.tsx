@@ -1,15 +1,18 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Users, Target, TrendingUp, CreditCard, Home } from 'lucide-react';
+import { Loader2, RefreshCw, Users, Target, TrendingUp, CreditCard, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePayrollData } from '@/hooks/usePayrollData';
 import { useSessionsData } from '@/hooks/useSessionsData';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { PowerCycleVsBarreCharts } from './PowerCycleVsBarreCharts';
 import { PowerCycleVsBarreTables } from './PowerCycleVsBarreTables';
 import { PowerCycleVsBarreTopBottomLists } from './PowerCycleVsBarreTopBottomLists';
+import { PowerCycleVsBarreComparison } from './PowerCycleVsBarreComparison';
+import { PowerCycleVsBarreAdvancedMetrics } from './PowerCycleVsBarreAdvancedMetrics';
 import { FilterSection } from './FilterSection';
 import { MetricCard } from './MetricCard';
 import { formatNumber } from '@/utils/formatters';
@@ -23,6 +26,7 @@ export const PowerCycleVsBarreSection: React.FC = () => {
   const navigate = useNavigate();
   
   const [activeLocation, setActiveLocation] = useState('all');
+  const [filtersCollapsed, setFiltersCollapsed] = useState(true); // Collapsed by default
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: { start: '', end: '' },
     location: [],
@@ -32,25 +36,17 @@ export const PowerCycleVsBarreSection: React.FC = () => {
     paymentMethod: []
   });
 
-  // Get unique locations from sessions data
+  // Define specific locations to show
   const locations = useMemo(() => {
-    if (!sessionsData || sessionsData.length === 0) {
-      return [{ id: 'all', name: 'All Locations', fullName: 'All Locations' }];
-    }
-
-    const uniqueLocations = Array.from(new Set(sessionsData.map(session => session.location)))
-      .filter(location => location && location.trim() !== '')
-      .map((location, index) => ({
-        id: location.toLowerCase().replace(/\s+/g, '-'),
-        name: location.length > 15 ? location.substring(0, 15) + '...' : location,
-        fullName: location
-      }));
-
-    return [
+    const predefinedLocations = [
       { id: 'all', name: 'All Locations', fullName: 'All Locations' },
-      ...uniqueLocations
+      { id: 'kwality', name: 'Kwality House', fullName: 'Kwality House, Kemps Corner' },
+      { id: 'supreme', name: 'Supreme HQ', fullName: 'Supreme HQ, Bandra' },
+      { id: 'kenkere', name: 'Kenkere House', fullName: 'Kenkere House' }
     ];
-  }, [sessionsData]);
+    
+    return predefinedLocations;
+  }, []);
 
   // Transform sessions data to match dashboard types and filter by location
   const transformedSessionsData: SessionData[] = useMemo(() => {
@@ -58,9 +54,19 @@ export const PowerCycleVsBarreSection: React.FC = () => {
     
     const filteredByLocation = activeLocation === 'all' 
       ? sessionsData 
-      : sessionsData.filter(session => 
-          session.location.toLowerCase().replace(/\s+/g, '-') === activeLocation
-        );
+      : sessionsData.filter(session => {
+          const sessionLocation = session.location.toLowerCase();
+          switch (activeLocation) {
+            case 'kwality':
+              return sessionLocation.includes('kwality');
+            case 'supreme':
+              return sessionLocation.includes('supreme');
+            case 'kenkere':
+              return sessionLocation.includes('kenkere');
+            default:
+              return true;
+          }
+        });
     
     return filteredByLocation.map(session => ({
       sessionId: session.sessionId,
@@ -275,7 +281,7 @@ export const PowerCycleVsBarreSection: React.FC = () => {
         <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-0 overflow-hidden">
           <CardContent className="p-2">
             <Tabs value={activeLocation} onValueChange={setActiveLocation} className="w-full">
-              <TabsList className={`grid w-full grid-cols-${Math.min(locations.length, 4)} bg-gradient-to-r from-slate-100 to-slate-200 p-2 rounded-2xl h-auto gap-2`}>
+              <TabsList className="grid w-full grid-cols-4 bg-gradient-to-r from-slate-100 to-slate-200 p-2 rounded-2xl h-auto gap-2">
                 {locations.map((location) => (
                   <TabsTrigger
                     key={location.id}
@@ -293,12 +299,38 @@ export const PowerCycleVsBarreSection: React.FC = () => {
               {/* Tab Content */}
               {locations.map((location) => (
                 <TabsContent key={location.id} value={location.id} className="space-y-8 mt-8">
-                  {/* Filters Section */}
-                  <FilterSection
-                    data={salesData || []}
-                    filters={filters}
-                    onFiltersChange={handleFiltersChange}
-                    type="sales"
+                  {/* Collapsible Filters Section */}
+                  <Card className="bg-white/90 backdrop-blur-sm shadow-sm border border-gray-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg font-semibold text-gray-800">Advanced Filters</CardTitle>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+                          className="gap-2"
+                        >
+                          {filtersCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                          {filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    {!filtersCollapsed && (
+                      <CardContent>
+                        <FilterSection
+                          data={salesData || []}
+                          filters={filters}
+                          onFiltersChange={handleFiltersChange}
+                          type="sales"
+                        />
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* Comparison Section */}
+                  <PowerCycleVsBarreComparison 
+                    powerCycleMetrics={powerCycleMetrics}
+                    barreMetrics={barreMetrics}
                   />
 
                   {/* Enhanced Metric Cards */}
@@ -345,49 +377,13 @@ export const PowerCycleVsBarreSection: React.FC = () => {
                     />
                   </div>
 
-                  {/* Second Row of Enhanced Metrics */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <MetricCard
-                      data={{
-                        title: "PowerCycle Empty Classes",
-                        value: formatNumber(powerCycleMetrics.emptySessions),
-                        change: 0,
-                        description: "PowerCycle sessions with 0 attendance",
-                        calculation: "Count of sessions with no check-ins",
-                        icon: "sessions"
-                      }}
-                    />
-                    <MetricCard
-                      data={{
-                        title: "Barre Empty Classes",
-                        value: formatNumber(barreMetrics.emptySessions),
-                        change: 0,
-                        description: "Barre sessions with 0 attendance",
-                        calculation: "Count of sessions with no check-ins",
-                        icon: "sessions"
-                      }}
-                    />
-                    <MetricCard
-                      data={{
-                        title: "PowerCycle Avg (Excl Empty)",
-                        value: Math.round(powerCycleMetrics.avgSessionSizeExclEmpty).toString(),
-                        change: 0,
-                        description: "Average PowerCycle size excluding empty",
-                        calculation: "Average attendees per non-empty session",
-                        icon: "average"
-                      }}
-                    />
-                    <MetricCard
-                      data={{
-                        title: "Barre Avg (Excl Empty)",
-                        value: Math.round(barreMetrics.avgSessionSizeExclEmpty).toString(),
-                        change: 0,
-                        description: "Average Barre size excluding empty",
-                        calculation: "Average attendees per non-empty session",
-                        icon: "average"
-                      }}
-                    />
-                  </div>
+                  {/* Advanced Metrics Section */}
+                  <PowerCycleVsBarreAdvancedMetrics
+                    powerCycleData={powerCycleData}
+                    barreData={barreData}
+                    powerCycleMetrics={powerCycleMetrics}
+                    barreMetrics={barreMetrics}
+                  />
 
                   {/* Charts Section */}
                   <PowerCycleVsBarreCharts 
