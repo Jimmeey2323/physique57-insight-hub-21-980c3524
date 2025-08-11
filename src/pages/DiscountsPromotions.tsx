@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo } from 'react';
-import { DiscountsSection } from '@/components/dashboard/DiscountsSection';
+import DiscountsSection from '@/components/dashboard/DiscountsSection';
 import { RefinedLoader } from '@/components/ui/RefinedLoader';
 import { useDiscountsData } from '@/hooks/useDiscountsData';
 import { useGlobalLoading } from '@/hooks/useGlobalLoading';

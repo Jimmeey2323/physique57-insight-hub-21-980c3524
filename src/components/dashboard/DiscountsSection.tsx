@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,11 +29,14 @@ const DiscountsSection = () => {
     if (!salesData) return [];
     
     return salesData.map(item => ({
-      ...item,
-      location: item.storeCity || 'Unknown',
-      mrpPreTax: item.mrp || 0,
-      mrpPostTax: item.mrp || 0,
-      discountPercentage: item.discount || 0
+      date: item.paymentDate || '',
+      location: item.calculatedLocation || 'Unknown',
+      itemsSold: 1, // Each sales record represents one item sold
+      mrpPreTax: item.preTaxMrp || item.paymentValue || 0,
+      discountPercentage: item.grossDiscountPercent || 0,
+      mrpPostTax: item.postTaxMrp || item.paymentValue || 0,
+      tax: item.paymentVAT || 0,
+      totalRevenue: item.paymentValue || 0
     }));
   }, [salesData]);
 

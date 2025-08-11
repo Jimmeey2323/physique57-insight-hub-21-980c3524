@@ -1,3 +1,4 @@
+
 import React, { memo, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +22,16 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
 }) => {
   // Helper function to safely format numbers
   const safeToFixed = (value: any, decimals: number = 1): string => {
-    const num = typeof value === 'number' ? value : parseFloat(value);
+    if (value === null || value === undefined) return '0.0';
+    const num = typeof value === 'number' ? value : parseFloat(String(value));
     return isNaN(num) ? '0.0' : num.toFixed(decimals);
+  };
+
+  // Safe number formatting for display
+  const formatSafeNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const num = typeof value === 'number' ? value : parseFloat(String(value));
+    return isNaN(num) ? 0 : num;
   };
 
   // Instructor performance analysis
@@ -213,7 +222,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 font-bold">
-          {value}
+          {formatSafeNumber(value)}
         </Badge>
       )
     },
@@ -223,7 +232,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 font-semibold">
-          {value}
+          {formatSafeNumber(value)}
         </Badge>
       )
     },
@@ -233,7 +242,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-pink-100 to-pink-200 text-pink-800 font-semibold">
-          {value}
+          {formatSafeNumber(value)}
         </Badge>
       )
     },
@@ -272,8 +281,8 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       header: 'Fill Rate',
       align: 'center',
       render: (value: number) => {
-        const numValue = typeof value === 'number' ? value : parseFloat(value);
-        const roundedValue = isNaN(numValue) ? 0 : Math.round(numValue);
+        const numValue = formatSafeNumber(value);
+        const roundedValue = Math.round(numValue);
         const colorClass = roundedValue > 80 ? 'from-green-500 to-green-600' : 
                           roundedValue > 60 ? 'from-yellow-500 to-yellow-600' : 
                           'from-red-500 to-red-600';
@@ -312,7 +321,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 font-semibold">
-          {value}
+          {formatSafeNumber(value)}
         </Badge>
       )
     },
@@ -322,7 +331,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-pink-100 to-pink-200 text-pink-800 font-semibold">
-          {value}
+          {formatSafeNumber(value)}
         </Badge>
       )
     },
@@ -332,7 +341,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold">
-          {formatNumber(value)}
+          {formatNumber(formatSafeNumber(value))}
         </Badge>
       )
     },
@@ -342,7 +351,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
       align: 'center',
       render: (value: number) => (
         <Badge className="bg-gradient-to-r from-pink-500 to-pink-600 text-white font-bold">
-          {formatNumber(value)}
+          {formatNumber(formatSafeNumber(value))}
         </Badge>
       )
     },
@@ -374,7 +383,7 @@ export const PowerCycleVsBarreTables: React.FC<PowerCycleVsBarreTablesProps> = m
         <div className="flex items-center justify-end gap-1">
           <DollarSign className="w-4 h-4 text-green-600" />
           <Badge className="bg-gradient-to-r from-green-500 to-green-600 text-white font-bold">
-            {formatCurrency(value)}
+            {formatCurrency(formatSafeNumber(value))}
           </Badge>
         </div>
       )
