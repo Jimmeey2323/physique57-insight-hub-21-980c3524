@@ -381,7 +381,7 @@ export const ExecutiveSummarySection: React.FC = () => {
         description="Comprehensive analytics and insights across all business operations with real-time data visualization and performance metrics."
         badgeText="Executive Suite"
         badgeIcon={Crown}
-        gradient="primary"
+        gradient="blue"
         stats={[
           {
             value: formatCurrency(salesMetrics?.revenue || 0),
