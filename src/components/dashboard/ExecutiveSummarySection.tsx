@@ -39,6 +39,20 @@ import { cn } from '@/lib/utils';
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
 
+// Define types for better type safety
+interface ProductSummary {
+  product: string;
+  revenue: number;
+  transactions: number;
+}
+
+interface TrainerSummary {
+  name: string;
+  totalPaid: number;
+  sessions: number;
+  customers: number;
+}
+
 export const ExecutiveSummarySection: React.FC = () => {
   const { data: salesData, loading: salesLoading } = useGoogleSheets();
   const { data: leadsData, loading: leadsLoading } = useLeadsData();
@@ -132,7 +146,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   const revenueChartData = useMemo(() => {
     if (!salesData) return [];
     
-    const monthlyData = salesData.reduce((acc: any, item: any) => {
+    const monthlyData = salesData.reduce((acc: Record<string, { month: string; revenue: number; transactions: number }>, item: any) => {
       const date = new Date(item.paymentDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
@@ -152,7 +166,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   const sessionFillRateData = useMemo(() => {
     if (!sessionsData) return [];
 
-    const classTypeData = sessionsData.reduce((acc: any, item: any) => {
+    const classTypeData = sessionsData.reduce((acc: Record<string, { name: string; value: number; count: number }>, item: any) => {
       const classType = item.cleanedClass || 'Unknown';
       if (!acc[classType]) {
         acc[classType] = { name: classType, value: 0, count: 0 };
@@ -172,7 +186,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   const topProducts = useMemo(() => {
     if (!salesData) return [];
     
-    const productSummary = salesData.reduce((acc: any, item: any) => {
+    const productSummary = salesData.reduce((acc: Record<string, ProductSummary>, item: any) => {
       const product = item.cleanedProduct || 'Unknown Product';
       if (!acc[product]) {
         acc[product] = { product, revenue: 0, transactions: 0 };
@@ -183,7 +197,7 @@ export const ExecutiveSummarySection: React.FC = () => {
     }, {});
 
     return Object.values(productSummary)
-      .sort((a: any, b: any) => b.revenue - a.revenue)
+      .sort((a: ProductSummary, b: ProductSummary) => b.revenue - a.revenue)
       .slice(0, 5);
   }, [salesData]);
 
@@ -193,7 +207,7 @@ export const ExecutiveSummarySection: React.FC = () => {
     return payrollData
       .sort((a: any, b: any) => (b.totalPaid || 0) - (a.totalPaid || 0))
       .slice(0, 5)
-      .map((trainer: any) => ({
+      .map((trainer: any): TrainerSummary => ({
         name: trainer.teacherName,
         totalPaid: trainer.totalPaid || 0,
         sessions: trainer.totalSessions || 0,
