@@ -103,7 +103,7 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
             <TooltipTrigger asChild>
               <div onClick={() => toggleRowExpansion(value)} className="flex items-center gap-2 cursor-pointer">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
-                <span className="text-slate-50 font-bold">{value}</span>
+                <span className="text-gray-900 font-bold">{value}</span>
                 <Button variant="ghost" size="sm" className="ml-2 opacity-60 hover:opacity-100 p-1 h-6 w-6">
                   <Eye className="w-3 h-3" />
                 </Button>
@@ -136,7 +136,7 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
     align: 'center' as const,
     render: (value: any) => <div className="text-center">
           <div className="font-bold text-slate-100">{formatNumber(safeNumber(value))}</div>
-          <Badge variant="outline" className="text-xs mt-1 border-green-200 text-green-700 bg-slate-950">
+          <Badge variant="outline" className="text-xs mt-1 border-green-200 text-green-300 bg-slate-950">
             <Activity className="w-3 h-3 mr-1" />
             Trials
           </Badge>
@@ -147,7 +147,7 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
     align: 'center' as const,
     render: (value: any) => <div className="text-center">
           <div className="font-bold text-slate-100">{formatNumber(safeNumber(value))}</div>
-          <Badge variant="outline" className="text-xs mt-1 border-purple-200 text-purple-700">
+          <Badge variant="outline" className="text-xs mt-1 border-purple-200 text-purple-200 bg-slate-900">
             <Target className="w-3 h-3 mr-1" />
             Members
           </Badge>
@@ -158,7 +158,7 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
     align: 'center' as const,
     render: (value: any) => <div className="text-center">
           <div className="font-bold text-slate-100">{formatNumber(safeNumber(value))}</div>
-          <Badge variant="outline" className="text-xs mt-1 border-red-200 text-red-700">
+          <Badge variant="outline" className="text-xs mt-1 border-red-700 text-red-100 bg-slate-950">
             Lost
           </Badge>
         </div>
@@ -221,7 +221,7 @@ export const ImprovedLeadSourcePerformanceTable: React.FC<LeadSourcePerformanceT
       </Card>;
   }
   return <Card className="bg-white shadow-xl border-0">
-      <CardHeader className="pb-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <CardHeader className="pb-4 bg-gradient-to-r from-blue-800 to-indigo-900">
         <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
           <BarChart3 className="w-6 h-6 text-blue-600" />
           {title}
