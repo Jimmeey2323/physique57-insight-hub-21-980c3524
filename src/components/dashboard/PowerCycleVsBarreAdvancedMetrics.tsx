@@ -113,16 +113,18 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     });
     
     [...powerCycleData, ...barreData].forEach(session => {
-      const day = session.dayOfWeek || new Date(session.date).toLocaleLowerCase('en-US', { weekday: 'long' });
+      // Use a simple date parsing approach since dayOfWeek may not exist
+      const sessionDate = new Date(session.date);
+      const dayName = sessionDate.toLocaleDateString('en-US', { weekday: 'long' });
       
-      if (dayData[day]) {
+      if (dayData[dayName]) {
         const isPowerCycle = powerCycleData.includes(session);
         if (isPowerCycle) {
-          dayData[day].powercycle++;
-          dayData[day].pcAttendance += session.checkedIn;
+          dayData[dayName].powercycle++;
+          dayData[dayName].pcAttendance += session.checkedIn;
         } else {
-          dayData[day].barre++;
-          dayData[day].barreAttendance += session.checkedIn;
+          dayData[dayName].barre++;
+          dayData[dayName].barreAttendance += session.checkedIn;
         }
       }
     });
@@ -146,12 +148,17 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { name: 'Barre', value: barreMetrics.totalSessions, color: COLORS.barre }
   ];
 
-  const timeSlotColumns = [
-    { key: 'time', header: 'Time Slot', align: 'left' as const },
+  const timeSlotColumns: Array<{
+    key: 'time' | 'powercycle' | 'barre' | 'pcAvgAttendance' | 'barreAvgAttendance';
+    header: string;
+    align?: 'left' | 'center' | 'right';
+    render?: (value: any, item: any) => React.ReactNode;
+  }> = [
+    { key: 'time', header: 'Time Slot', align: 'left' },
     { 
       key: 'powercycle', 
       header: 'PC Sessions', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: number) => (
         <Badge className="bg-blue-100 text-blue-800 font-semibold">
           {value}
@@ -161,7 +168,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'barre', 
       header: 'Barre Sessions', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: number) => (
         <Badge className="bg-pink-100 text-pink-800 font-semibold">
           {value}
@@ -171,7 +178,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'pcAvgAttendance', 
       header: 'PC Avg Attendance', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: string) => (
         <Badge variant="outline" className="border-blue-200 text-blue-700 font-medium">
           {value}
@@ -181,7 +188,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'barreAvgAttendance', 
       header: 'Barre Avg Attendance', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: string) => (
         <Badge variant="outline" className="border-pink-200 text-pink-700 font-medium">
           {value}
@@ -190,11 +197,16 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     }
   ];
 
-  const locationColumns = [
+  const locationColumns: Array<{
+    key: 'location' | 'powercycleSessions' | 'barreSessions' | 'pcFillRate' | 'barreFillRate';
+    header: string;
+    align?: 'left' | 'center' | 'right';
+    render?: (value: any, item: any) => React.ReactNode;
+  }> = [
     { 
       key: 'location', 
       header: 'Location', 
-      align: 'left' as const,
+      align: 'left',
       render: (value: string, item: any) => (
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-gray-500" />
@@ -205,7 +217,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'powercycleSessions', 
       header: 'PC Sessions', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: number) => (
         <Badge className="bg-blue-100 text-blue-800 font-semibold">
           {value}
@@ -215,7 +227,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'barreSessions', 
       header: 'Barre Sessions', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: number) => (
         <Badge className="bg-pink-100 text-pink-800 font-semibold">
           {value}
@@ -225,7 +237,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'pcFillRate', 
       header: 'PC Fill Rate', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: string) => {
         const numValue = parseFloat(value);
         const colorClass = numValue > 80 ? 'bg-green-100 text-green-800' : 
@@ -241,7 +253,7 @@ export const PowerCycleVsBarreAdvancedMetrics: React.FC<PowerCycleVsBarreAdvance
     { 
       key: 'barreFillRate', 
       header: 'Barre Fill Rate', 
-      align: 'center' as const,
+      align: 'center',
       render: (value: string) => {
         const numValue = parseFloat(value);
         const colorClass = numValue > 80 ? 'bg-green-100 text-green-800' : 

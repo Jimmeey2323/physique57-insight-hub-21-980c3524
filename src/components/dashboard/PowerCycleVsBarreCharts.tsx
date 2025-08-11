@@ -31,7 +31,7 @@ const AttendanceChart = memo(({ data, chartType }: { data: any[]; chartType: 'ba
         <Tooltip 
           formatter={(value, name) => [
             `${value} attendees`,
-            name === 'powerCycle' ? 'PowerCycle' : 'Barre'
+            typeof name === 'string' && name === 'powerCycle' ? 'PowerCycle' : 'Barre'
           ]}
           labelFormatter={(label) => `Month: ${label}`}
           contentStyle={{
@@ -70,7 +70,7 @@ const AttendanceChart = memo(({ data, chartType }: { data: any[]; chartType: 'ba
         <Tooltip 
           formatter={(value, name) => [
             `${value} attendees`,
-            name === 'powerCycle' ? 'PowerCycle' : 'Barre'
+            typeof name === 'string' && name === 'powerCycle' ? 'PowerCycle' : 'Barre'
           ]}
           labelFormatter={(label) => `Month: ${label}`}
           contentStyle={{
@@ -120,7 +120,7 @@ const FillRateChart = memo(({ data, chartType }: { data: any[]; chartType: 'bar'
         />
         <Tooltip 
           formatter={(value, name) => {
-            if (name.includes('Fill')) {
+            if (typeof name === 'string' && name.includes('Fill')) {
               return [`${Math.round(Number(value))}%`, name];
             }
             return [`${value} sessions`, name];
@@ -182,7 +182,7 @@ const FillRateChart = memo(({ data, chartType }: { data: any[]; chartType: 'bar'
         <Tooltip 
           formatter={(value, name) => [
             `${Math.round(Number(value))}%`,
-            name === 'powerCycleFill' ? 'PowerCycle Fill Rate' : 'Barre Fill Rate'
+            typeof name === 'string' && name === 'powerCycleFill' ? 'PowerCycle Fill Rate' : 'Barre Fill Rate'
           ]}
           labelFormatter={(label) => `Month: ${label}`}
           contentStyle={{
@@ -221,7 +221,7 @@ const FillRateChart = memo(({ data, chartType }: { data: any[]; chartType: 'bar'
         <Tooltip 
           formatter={(value, name) => [
             `${Math.round(Number(value))}%`,
-            name === 'powerCycleFill' ? 'PowerCycle Fill Rate' : 'Barre Fill Rate'
+            typeof name === 'string' && name === 'powerCycleFill' ? 'PowerCycle Fill Rate' : 'Barre Fill Rate'
           ]}
           labelFormatter={(label) => `Month: ${label}`}
           contentStyle={{
