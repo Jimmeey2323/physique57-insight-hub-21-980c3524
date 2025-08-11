@@ -67,6 +67,30 @@ export const getCurrentMonthKey = (): string => {
 };
 
 /**
+ * Get the previous month key in YYYY-MM format
+ */
+export const getPreviousMonthKey = (): string => {
+  const now = new Date();
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
+};
+
+/**
+ * Get the previous month date range
+ */
+export const getPreviousMonthDateRange = (): { start: string; end: string } => {
+  const now = new Date();
+  const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const startOfMonth = new Date(previousMonth.getFullYear(), previousMonth.getMonth(), 1);
+  const endOfMonth = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0);
+  
+  return {
+    start: startOfMonth.toISOString().split('T')[0],
+    end: endOfMonth.toISOString().split('T')[0]
+  };
+};
+
+/**
  * Check if a month key is in the current year
  */
 export const isCurrentYear = (monthKey: string): boolean => {
