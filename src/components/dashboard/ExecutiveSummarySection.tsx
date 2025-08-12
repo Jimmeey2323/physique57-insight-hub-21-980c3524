@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,6 +8,7 @@ import { useSalesData } from '@/hooks/useSalesData';
 import { useSessionsData } from '@/hooks/useSessionsData';
 import { usePayrollData } from '@/hooks/usePayrollData';
 import { useNewClientData } from '@/hooks/useNewClientData';
+import { useLeadsData } from '@/hooks/useLeadsData';
 import { DrillDownModal } from './DrillDownModal';
 import { formatCurrency, formatNumber, formatPercentage } from '@/utils/formatters';
 import { 
@@ -30,19 +30,22 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 const ExecutiveSummarySection = () => {
+  const navigate = useNavigate();
   const { data: salesData, isLoading: salesLoading, error: salesError } = useSalesData();
   const { data: sessionsData, loading: sessionsLoading, error: sessionsError } = useSessionsData();
   const { data: payrollData, isLoading: payrollLoading, error: payrollError } = usePayrollData();
   const { data: clientData, loading: clientLoading, error: clientError } = useNewClientData();
+  const { data: leadsData, loading: leadsLoading, error: leadsError } = useLeadsData();
 
   const [selectedTab, setSelectedTab] = useState('overview');
   const [drillDownData, setDrillDownData] = useState<any>(null);
   const [drillDownType, setDrillDownType] = useState<'metric' | 'product' | 'category' | 'member' | 'soldBy' | 'paymentMethod' | 'client-conversion' | 'trainer' | 'location'>('metric');
   const [isDrillDownOpen, setIsDrillDownOpen] = useState(false);
 
-  const isLoading = salesLoading || sessionsLoading || payrollLoading || clientLoading;
+  const isLoading = salesLoading || sessionsLoading || payrollLoading || clientLoading || leadsLoading;
 
   const handleDrillDown = (data: any, type: any) => {
     setDrillDownData(data);
@@ -55,6 +58,7 @@ const ExecutiveSummarySection = () => {
   const totalSessions = sessionsData?.length || 0;
   const totalTrainers = payrollData?.length || 0;
   const totalClients = clientData?.length || 0;
+  const totalLeads = leadsData?.length || 0;
 
   // Revenue trend data (last 6 months)
   const revenueData = [
@@ -116,6 +120,38 @@ const ExecutiveSummarySection = () => {
     .sort((a: any, b: any) => b.revenue - a.revenue)
     .slice(0, 5);
 
+  // Top sales associates data
+  const salesAssociateData = salesData?.reduce((acc: any, sale) => {
+    const associate = sale.soldBy || 'Unknown';
+    if (!acc[associate]) {
+      acc[associate] = { name: associate, revenue: 0, transactions: 0 };
+    }
+    acc[associate].revenue += sale.paymentValue || 0;
+    acc[associate].transactions += 1;
+    return acc;
+  }, {}) || {};
+
+  const topSalesAssociates = Object.values(salesAssociateData)
+    .sort((a: any, b: any) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  // Lead sources data
+  const leadSourceData = leadsData?.reduce((acc: any, lead) => {
+    const source = lead.source || 'Unknown';
+    if (!acc[source]) {
+      acc[source] = { name: source, leads: 0, converted: 0 };
+    }
+    acc[source].leads += 1;
+    if (lead.conversionStatus === 'Converted') {
+      acc[source].converted += 1;
+    }
+    return acc;
+  }, {}) || {};
+
+  const topLeadSources = Object.values(leadSourceData)
+    .sort((a: any, b: any) => b.leads - a.leads)
+    .slice(0, 5);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 flex items-center justify-center">
@@ -164,16 +200,16 @@ const ExecutiveSummarySection = () => {
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105"
-                onClick={() => window.open('/sales-analytics', '_blank')}
+                onClick={() => navigate('/')}
               >
                 <Navigation className="w-5 h-5 mr-2" />
-                Open Dashboard
+                Return to Dashboard
                 <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
 
             {/* Key Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-12 animate-fade-in delay-500">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-12 animate-fade-in delay-500">
               <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
                 <CardContent className="p-6 text-center">
                   <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-3" />
@@ -200,6 +236,13 @@ const ExecutiveSummarySection = () => {
                   <Target className="w-8 h-8 text-orange-400 mx-auto mb-3" />
                   <div className="text-2xl font-bold text-white">{formatNumber(totalClients)}</div>
                   <div className="text-sm text-slate-300">Total Clients</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
+                <CardContent className="p-6 text-center">
+                  <Activity className="w-8 h-8 text-cyan-400 mx-auto mb-3" />
+                  <div className="text-2xl font-bold text-white">{formatNumber(totalLeads)}</div>
+                  <div className="text-sm text-slate-300">Total Leads</div>
                 </CardContent>
               </Card>
             </div>
@@ -242,101 +285,42 @@ const ExecutiveSummarySection = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-8">
+            {/* Overview Tables Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Revenue Trend Chart */}
+              {/* Top Sales Associates Table */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                    Revenue Trend
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    Top Sales Associates
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="month" stroke="#64748b" />
-                      <YAxis stroke="#64748b" />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="revenue" 
-                        stroke="url(#gradient)" 
-                        strokeWidth={3}
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
-                      />
-                      <defs>
-                        <linearGradient id="gradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#8b5cf6" />
-                        </linearGradient>
-                      </defs>
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Location Performance */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Activity className="w-5 h-5 text-blue-600" />
-                    Location Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {locations.map((location: any, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-slate-700">{location.name}</span>
-                        <span className="text-sm font-bold text-slate-900">{formatCurrency(location.value)}</span>
-                      </div>
-                      <Progress 
-                        value={(location.value / Math.max(...locations.map((l: any) => l.value))) * 100} 
-                        className="h-2"
-                      />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top Performers Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Top Products */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Award className="w-5 h-5 text-yellow-600" />
-                    Top Products
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {topProducts.map((product: any, index) => (
+                  <div className="space-y-3">
+                    {topSalesAssociates.map((associate: any, index) => (
                       <div 
-                        key={index} 
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-green-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
                         onClick={() => handleDrillDown({
-                          name: product.name,
-                          totalValue: product.revenue,
-                          totalTransactions: product.quantity,
-                          metricValue: product.revenue,
-                          rawData: salesData?.filter(s => s.cleanedProduct === product.name)
-                        }, 'product')}
+                          name: associate.name,
+                          totalValue: associate.revenue,
+                          totalTransactions: associate.transactions,
+                          metricValue: associate.revenue,
+                          rawData: salesData?.filter(s => s.soldBy === associate.name)
+                        }, 'soldBy')}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                             {index + 1}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800">{product.name}</p>
-                            <p className="text-xs text-slate-600">{product.quantity} sales</p>
+                            <p className="font-semibold text-slate-800">{associate.name}</p>
+                            <p className="text-sm text-slate-600">{associate.transactions} transactions</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-slate-900">{formatCurrency(product.revenue)}</p>
-                          <Eye className="w-4 h-4 text-blue-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="font-bold text-slate-900">{formatCurrency(associate.revenue)}</p>
+                          <Eye className="w-4 h-4 text-green-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
                     ))}
@@ -344,20 +328,121 @@ const ExecutiveSummarySection = () => {
                 </CardContent>
               </Card>
 
-              {/* Top Trainers */}
+              {/* Top Lead Sources Table */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Zap className="w-5 h-5 text-purple-600" />
-                    Top Trainers
+                    <Target className="w-5 h-5 text-blue-600" />
+                    Top Lead Sources
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
+                    {topLeadSources.map((source: any, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
+                        onClick={() => handleDrillDown({
+                          name: source.name,
+                          totalValue: source.leads,
+                          totalConverted: source.converted,
+                          conversionRate: source.leads > 0 ? (source.converted / source.leads * 100).toFixed(1) : '0',
+                          metricValue: source.leads,
+                          rawData: leadsData?.filter(l => l.source === source.name)
+                        }, 'metric')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800">{source.name}</p>
+                            <p className="text-sm text-slate-600">{source.converted} converted</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-slate-900">{formatNumber(source.leads)} leads</p>
+                          <p className="text-sm text-green-600">
+                            {source.leads > 0 ? ((source.converted / source.leads) * 100).toFixed(1) : '0'}% conv.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sessions by Location Table */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Calendar className="w-5 h-5 text-purple-600" />
+                    Sessions by Location
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {sessionsData?.reduce((acc: any, session) => {
+                      const location = session.location || 'Unknown';
+                      if (!acc[location]) {
+                        acc[location] = { name: location, sessions: 0, attendance: 0 };
+                      }
+                      acc[location].sessions += 1;
+                      acc[location].attendance += session.checkedInCount || 0;
+                      return acc;
+                    }, {}) && Object.values(sessionsData?.reduce((acc: any, session) => {
+                      const location = session.location || 'Unknown';
+                      if (!acc[location]) {
+                        acc[location] = { name: location, sessions: 0, attendance: 0 };
+                      }
+                      acc[location].sessions += 1;
+                      acc[location].attendance += session.checkedInCount || 0;
+                      return acc;
+                    }, {})).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5).map((location: any, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
+                        onClick={() => handleDrillDown({
+                          name: location.name,
+                          totalValue: location.sessions,
+                          totalAttendance: location.attendance,
+                          metricValue: location.sessions,
+                          rawData: sessionsData?.filter(s => s.location === location.name)
+                        }, 'location')}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800">{location.name}</p>
+                            <p className="text-sm text-slate-600">{location.attendance} total attendance</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-slate-900">{formatNumber(location.sessions)} sessions</p>
+                          <Eye className="w-4 h-4 text-purple-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Trainers Performance Table */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Users className="w-5 h-5 text-orange-600" />
+                    Top Trainers Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
                     {topTrainers.map((trainer: any, index) => (
                       <div 
-                        key={index} 
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
                         onClick={() => handleDrillDown({
                           name: trainer.name,
                           totalValue: trainer.revenue,
@@ -368,17 +453,17 @@ const ExecutiveSummarySection = () => {
                         }, 'trainer')}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                             {index + 1}
                           </div>
                           <div>
                             <p className="font-semibold text-slate-800">{trainer.name}</p>
-                            <p className="text-xs text-slate-600">{trainer.sessions} sessions</p>
+                            <p className="text-sm text-slate-600">{trainer.sessions} sessions • {trainer.students} students</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-slate-900">{formatCurrency(trainer.revenue)}</p>
-                          <Eye className="w-4 h-4 text-purple-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Eye className="w-4 h-4 text-orange-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>
                     ))}
@@ -386,6 +471,39 @@ const ExecutiveSummarySection = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Revenue Trend Chart */}
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  Revenue Trend Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="month" stroke="#64748b" />
+                    <YAxis stroke="#64748b" />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="revenue" 
+                      stroke="url(#gradient)" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
+                    />
+                    <defs>
+                      <linearGradient id="gradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                      </linearGradient>
+                    </defs>
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Sales Tab */}

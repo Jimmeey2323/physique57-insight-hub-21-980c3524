@@ -1,15 +1,162 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { ImprovedLeadsSection } from '@/components/dashboard/ImprovedLeadsSection';
+import { FunnelLeadsFilterSection } from '@/components/dashboard/FunnelLeadsFilterSection';
+import { ImprovedLeadYearOnYearTable } from '@/components/dashboard/ImprovedLeadYearOnYearTable';
 import { useNavigate } from 'react-router-dom';
+import { useLeadsData } from '@/hooks/useLeadsData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Home, Filter, Database, Eye, BarChart3, TrendingUp, Users, Target } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Home, Filter, Database, Eye, BarChart3, TrendingUp, Users, Target, Funnel, Calendar } from 'lucide-react';
 import { Footer } from '@/components/ui/footer';
 import { cn } from '@/lib/utils';
+import { LeadsFilterOptions, LeadsData } from '@/types/leads';
 
 const FunnelLeads = () => {
   const navigate = useNavigate();
+  const { data: leadsData, loading, error } = useLeadsData();
+
+  const [filters, setFilters] = useState<LeadsFilterOptions>({
+    dateRange: { start: '', end: '' },
+    location: [],
+    source: [],
+    stage: [],
+    status: [],
+    associate: [],
+    channel: [],
+    trialStatus: [],
+    conversionStatus: [],
+    retentionStatus: [],
+    minLTV: undefined,
+    maxLTV: undefined
+  });
+
+  // Extract unique values for filters
+  const uniqueValues = useMemo(() => {
+    if (!leadsData) return {
+      locations: [],
+      sources: [],
+      stages: [],
+      statuses: [],
+      associates: [],
+      channels: [],
+      trialStatuses: [],
+      conversionStatuses: [],
+      retentionStatuses: []
+    };
+
+    return {
+      locations: [...new Set(leadsData.map(item => item.center).filter(Boolean))],
+      sources: [...new Set(leadsData.map(item => item.source).filter(Boolean))],
+      stages: [...new Set(leadsData.map(item => item.stage).filter(Boolean))],
+      statuses: [...new Set(leadsData.map(item => item.status).filter(Boolean))],
+      associates: [...new Set(leadsData.map(item => item.associate).filter(Boolean))],
+      channels: [...new Set(leadsData.map(item => item.channel).filter(Boolean))],
+      trialStatuses: [...new Set(leadsData.map(item => item.trialStatus).filter(Boolean))],
+      conversionStatuses: [...new Set(leadsData.map(item => item.conversionStatus).filter(Boolean))],
+      retentionStatuses: [...new Set(leadsData.map(item => item.retentionStatus).filter(Boolean))]
+    };
+  }, [leadsData]);
+
+  // Filter leads data based on current filters
+  const filteredLeadsData = useMemo(() => {
+    if (!leadsData) return [];
+
+    return leadsData.filter(lead => {
+      // Date range filter
+      if (filters.dateRange.start || filters.dateRange.end) {
+        const leadDate = new Date(lead.createdAt);
+        if (filters.dateRange.start && leadDate < new Date(filters.dateRange.start)) return false;
+        if (filters.dateRange.end && leadDate > new Date(filters.dateRange.end)) return false;
+      }
+
+      // Array filters
+      if (filters.location.length > 0 && !filters.location.includes(lead.center)) return false;
+      if (filters.source.length > 0 && !filters.source.includes(lead.source)) return false;
+      if (filters.stage.length > 0 && !filters.stage.includes(lead.stage)) return false;
+      if (filters.status.length > 0 && !filters.status.includes(lead.status)) return false;
+      if (filters.associate.length > 0 && !filters.associate.includes(lead.associate)) return false;
+      if (filters.channel.length > 0 && !filters.channel.includes(lead.channel)) return false;
+      if (filters.trialStatus.length > 0 && !filters.trialStatus.includes(lead.trialStatus)) return false;
+      if (filters.conversionStatus.length > 0 && !filters.conversionStatus.includes(lead.conversionStatus)) return false;
+      if (filters.retentionStatus.length > 0 && !filters.retentionStatus.includes(lead.retentionStatus)) return false;
+
+      // LTV range filter
+      if (filters.minLTV !== undefined && lead.ltv < filters.minLTV) return false;
+      if (filters.maxLTV !== undefined && lead.ltv > filters.maxLTV) return false;
+
+      return true;
+    });
+  }, [leadsData, filters]);
+
+  // Process year-on-year data for month-wise comparison
+  const yearOnYearData = useMemo(() => {
+    if (!filteredLeadsData.length) return { data: {}, years: [], sources: [] };
+
+    const processedData: Record<string, Record<string, any>> = {};
+    const yearsSet = new Set<string>();
+    const sourcesSet = new Set<string>();
+
+    filteredLeadsData.forEach(lead => {
+      if (!lead.createdAt) return;
+
+      const date = new Date(lead.createdAt);
+      const year = date.getFullYear().toString();
+      const month = date.getMonth() + 1;
+      const monthYear = `${year}-${month.toString().padStart(2, '0')}`;
+      const source = lead.source || 'Unknown';
+
+      yearsSet.add(year);
+      sourcesSet.add(source);
+
+      if (!processedData[source]) {
+        processedData[source] = {};
+      }
+
+      if (!processedData[source][monthYear]) {
+        processedData[source][monthYear] = {
+          totalLeads: 0,
+          convertedLeads: 0,
+          trialsCompleted: 0,
+          lostLeads: 0,
+          totalRevenue: 0
+        };
+      }
+
+      processedData[source][monthYear].totalLeads += 1;
+      processedData[source][monthYear].totalRevenue += lead.ltv || 0;
+
+      if (lead.conversionStatus === 'Converted') {
+        processedData[source][monthYear].convertedLeads += 1;
+      }
+
+      if (lead.trialStatus === 'Completed') {
+        processedData[source][monthYear].trialsCompleted += 1;
+      }
+
+      if (lead.status === 'Lost' || lead.conversionStatus === 'Lost') {
+        processedData[source][monthYear].lostLeads += 1;
+      }
+    });
+
+    return {
+      data: processedData,
+      years: Array.from(yearsSet).sort(),
+      sources: Array.from(sourcesSet).sort()
+    };
+  }, [filteredLeadsData]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-slate-600 font-medium">Loading lead funnel analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
@@ -52,7 +199,7 @@ const FunnelLeads = () => {
             
             <div className="text-center space-y-6">
               <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20 animate-fade-in-up shadow-lg">
-                <Filter className="w-5 h-5" />
+                <Funnel className="w-5 h-5" />
                 <span className="font-semibold">Advanced Lead Analytics</span>
               </div>
               
@@ -64,7 +211,7 @@ const FunnelLeads = () => {
               </h1>
               
               <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed animate-fade-in-up delay-300 font-medium">
-                Comprehensive lead generation analysis with advanced conversion tracking, funnel optimization, 
+                Comprehensive lead generation analysis with month-wise year-on-year conversion tracking, funnel optimization, 
                 and performance insights across all channels and associates
               </p>
               
@@ -74,29 +221,39 @@ const FunnelLeads = () => {
                   <div className="flex items-center justify-center mb-3">
                     <Users className="w-8 h-8 text-blue-200" />
                   </div>
-                  <div className="text-2xl font-bold text-white">2,400+</div>
+                  <div className="text-2xl font-bold text-white">{filteredLeadsData.length}+</div>
                   <div className="text-sm text-blue-200">Total Leads</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
                   <div className="flex items-center justify-center mb-3">
                     <Target className="w-8 h-8 text-green-200" />
                   </div>
-                  <div className="text-2xl font-bold text-white">24.5%</div>
+                  <div className="text-2xl font-bold text-white">
+                    {filteredLeadsData.length > 0 
+                      ? ((filteredLeadsData.filter(l => l.conversionStatus === 'Converted').length / filteredLeadsData.length) * 100).toFixed(1)
+                      : '0.0'
+                    }%
+                  </div>
                   <div className="text-sm text-green-200">Conversion Rate</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
                   <div className="flex items-center justify-center mb-3">
                     <TrendingUp className="w-8 h-8 text-amber-200" />
                   </div>
-                  <div className="text-2xl font-bold text-white">₹45K</div>
+                  <div className="text-2xl font-bold text-white">
+                    ₹{filteredLeadsData.length > 0 
+                      ? Math.round(filteredLeadsData.reduce((sum, l) => sum + (l.ltv || 0), 0) / filteredLeadsData.length)
+                      : 0
+                    }
+                  </div>
                   <div className="text-sm text-amber-200">Avg LTV</div>
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
                   <div className="flex items-center justify-center mb-3">
-                    <BarChart3 className="w-8 h-8 text-purple-200" />
+                    <Calendar className="w-8 h-8 text-purple-200" />
                   </div>
-                  <div className="text-2xl font-bold text-white">18.2%</div>
-                  <div className="text-sm text-purple-200">Growth Rate</div>
+                  <div className="text-2xl font-bold text-white">{uniqueValues.sources.length}</div>
+                  <div className="text-sm text-purple-200">Lead Sources</div>
                 </div>
               </div>
             </div>
@@ -104,6 +261,35 @@ const FunnelLeads = () => {
         </div>
       </div>
 
+      {/* Filter Section */}
+      <div className="container mx-auto px-6 py-8">
+        <FunnelLeadsFilterSection
+          filters={filters}
+          onFiltersChange={setFilters}
+          uniqueValues={uniqueValues}
+        />
+      </div>
+
+      {/* Year-on-Year Month-wise Analysis */}
+      <div className="container mx-auto px-6 pb-8">
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              Month-wise Year-on-Year Lead Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImprovedLeadYearOnYearTable
+              data={yearOnYearData.data}
+              years={yearOnYearData.years}
+              sources={yearOnYearData.sources}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Leads Section */}
       <ImprovedLeadsSection />
       
       <Footer />
