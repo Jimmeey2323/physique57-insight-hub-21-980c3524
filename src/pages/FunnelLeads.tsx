@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { ImprovedLeadsSection } from '@/components/dashboard/ImprovedLeadsSection';
 import { FunnelLeadsFilterSection } from '@/components/dashboard/FunnelLeadsFilterSection';
@@ -8,7 +7,7 @@ import { useLeadsData } from '@/hooks/useLeadsData';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Filter, Database, Eye, BarChart3, TrendingUp, Users, Target, Funnel, Calendar } from 'lucide-react';
+import { Home, Filter, Database, Eye, BarChart3, TrendingUp, Users, Target, TrendingDown, Calendar } from 'lucide-react';
 import { Footer } from '@/components/ui/footer';
 import { cn } from '@/lib/utils';
 import { LeadsFilterOptions, LeadsData } from '@/types/leads';
@@ -199,7 +198,7 @@ const FunnelLeads = () => {
             
             <div className="text-center space-y-6">
               <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20 animate-fade-in-up shadow-lg">
-                <Funnel className="w-5 h-5" />
+                <TrendingDown className="w-5 h-5" />
                 <span className="font-semibold">Advanced Lead Analytics</span>
               </div>
               

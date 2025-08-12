@@ -6,20 +6,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Filter, 
   ChevronDown, 
   ChevronUp, 
   X, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   MapPin, 
   Target, 
   Users,
-  Funnel,
+  TrendingUp,
   RefreshCw
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { LeadsFilterOptions } from '@/types/leads';
 
 interface FunnelLeadsFilterSectionProps {
@@ -63,6 +66,16 @@ export const FunnelLeadsFilterSection: React.FC<FunnelLeadsFilterSectionProps> =
     onFiltersChange({
       ...filters,
       [key]: newArray
+    });
+  };
+
+  const handleDateChange = (type: 'start' | 'end', date: Date | undefined) => {
+    onFiltersChange({
+      ...filters,
+      dateRange: {
+        ...filters.dateRange,
+        [type]: date ? date.toISOString().split('T')[0] : ''
+      }
     });
   };
 
@@ -147,29 +160,69 @@ export const FunnelLeadsFilterSection: React.FC<FunnelLeadsFilterSectionProps> =
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <Calendar className="w-4 h-4" />
+                  <CalendarIcon className="w-4 h-4" />
                   Start Date
                 </Label>
-                <DatePicker
-                  selected={filters.dateRange.start ? new Date(filters.dateRange.start) : undefined}
-                  onSelect={(date) => handleFilterChange('dateRange', {
-                    ...filters.dateRange,
-                    start: date ? date.toISOString().split('T')[0] : ''
-                  })}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !filters.dateRange.start && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filters.dateRange.start ? (
+                        format(new Date(filters.dateRange.start), "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={filters.dateRange.start ? new Date(filters.dateRange.start) : undefined}
+                      onSelect={(date) => handleDateChange('start', date)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <Calendar className="w-4 h-4" />
+                  <CalendarIcon className="w-4 h-4" />
                   End Date
                 </Label>
-                <DatePicker
-                  selected={filters.dateRange.end ? new Date(filters.dateRange.end) : undefined}
-                  onSelect={(date) => handleFilterChange('dateRange', {
-                    ...filters.dateRange,
-                    end: date ? date.toISOString().split('T')[0] : ''
-                  })}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !filters.dateRange.end && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {filters.dateRange.end ? (
+                        format(new Date(filters.dateRange.end), "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={filters.dateRange.end ? new Date(filters.dateRange.end) : undefined}
+                      onSelect={(date) => handleDateChange('end', date)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -220,7 +273,7 @@ export const FunnelLeadsFilterSection: React.FC<FunnelLeadsFilterSectionProps> =
               {/* Stages */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <Funnel className="w-4 h-4" />
+                  <TrendingUp className="w-4 h-4" />
                   Stages ({filters.stage.length})
                 </Label>
                 <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">

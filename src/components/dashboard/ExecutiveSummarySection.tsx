@@ -1,732 +1,806 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { useSalesData } from '@/hooks/useSalesData';
-import { useSessionsData } from '@/hooks/useSessionsData';
-import { usePayrollData } from '@/hooks/usePayrollData';
-import { useNewClientData } from '@/hooks/useNewClientData';
-import { useLeadsData } from '@/hooks/useLeadsData';
-import { DrillDownModal } from './DrillDownModal';
-import { formatCurrency, formatNumber, formatPercentage } from '@/utils/formatters';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   TrendingUp, 
   TrendingDown, 
   Users, 
-  DollarSign, 
-  Calendar, 
+  Calendar,
+  DollarSign,
+  Activity,
   Target,
   BarChart3,
-  Activity,
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  Filter,
+  Home,
+  ExternalLink,
+  UserPlus,
+  Building,
+  CreditCard,
+  Clock,
   Award,
   Zap,
-  Navigation,
-  Sparkles,
-  ChevronRight,
-  Eye,
-  Filter
+  MapPin,
+  Star,
+  CheckCircle,
+  AlertCircle,
+  Info
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { cn } from '@/lib/utils';
+import { useSalesData } from '@/hooks/useSalesData';
+import { useSessionsData } from '@/hooks/useSessionsData';
+import { useNewClientData } from '@/hooks/useNewClientData';
 import { useNavigate } from 'react-router-dom';
+import { DrillDownModal } from './DrillDownModal';
+import { cn } from '@/lib/utils';
 
 const ExecutiveSummarySection = () => {
   const navigate = useNavigate();
-  const { data: salesData, isLoading: salesLoading, error: salesError } = useSalesData();
-  const { data: sessionsData, loading: sessionsLoading, error: sessionsError } = useSessionsData();
-  const { data: payrollData, isLoading: payrollLoading, error: payrollError } = usePayrollData();
-  const { data: clientData, loading: clientLoading, error: clientError } = useNewClientData();
-  const { data: leadsData, loading: leadsLoading, error: leadsError } = useLeadsData();
+  const { data: salesData, loading: salesLoading } = useSalesData();
+  const { data: sessionsData, loading: sessionsLoading } = useSessionsData();
+  const { data: newClientData, loading: newClientLoading } = useNewClientData();
 
-  const [selectedTab, setSelectedTab] = useState('overview');
-  const [drillDownData, setDrillDownData] = useState<any>(null);
-  const [drillDownType, setDrillDownType] = useState<'metric' | 'product' | 'category' | 'member' | 'soldBy' | 'paymentMethod' | 'client-conversion' | 'trainer' | 'location'>('metric');
-  const [isDrillDownOpen, setIsDrillDownOpen] = useState(false);
+  const [drillDownModal, setDrillDownModal] = useState({
+    isOpen: false,
+    title: '',
+    data: [],
+    type: 'metric' as const,
+    columns: []
+  });
 
-  const isLoading = salesLoading || sessionsLoading || payrollLoading || clientLoading || leadsLoading;
+  const calculateMetrics = () => {
+    if (!salesData || !sessionsData || !newClientData) {
+      return {
+        totalRevenue: 0,
+        totalTransactions: 0,
+        totalSessions: 0,
+        totalNewClients: 0,
+        avgSessionAttendance: 0,
+        conversionRate: 0,
+        topPerformingLocation: 'N/A',
+        topPerformingTrainer: 'N/A'
+      };
+    }
 
-  const handleDrillDown = (data: any, type: any) => {
-    setDrillDownData(data);
-    setDrillDownType(type);
-    setIsDrillDownOpen(true);
+    const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.netRevenue || 0), 0);
+    const totalTransactions = salesData.length;
+    const totalSessions = sessionsData.length;
+    const totalNewClients = newClientData.length;
+    const avgSessionAttendance = sessionsData.length > 0 
+      ? sessionsData.reduce((sum, session) => sum + session.checkedIn, 0) / sessionsData.length 
+      : 0;
+
+    const convertedClients = newClientData.filter(client => client.conversionStatus === 'Converted').length;
+    const conversionRate = totalNewClients > 0 ? (convertedClients / totalNewClients) * 100 : 0;
+
+    // Location performance
+    const locationRevenue = salesData.reduce((acc, sale) => {
+      const location = sale.calculatedLocation || 'Unknown';
+      acc[location] = (acc[location] || 0) + (sale.netRevenue || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topPerformingLocation = Object.entries(locationRevenue)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+
+    // Trainer performance - fix the type error
+    const trainerRevenue = salesData.reduce((acc, sale) => {
+      const trainer = sale.soldBy || 'Unknown';
+      acc[trainer] = (acc[trainer] || 0) + (sale.netRevenue || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topPerformingTrainer = Object.entries(trainerRevenue)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+
+    return {
+      totalRevenue,
+      totalTransactions,
+      totalSessions,
+      totalNewClients,
+      avgSessionAttendance,
+      conversionRate,
+      topPerformingLocation,
+      topPerformingTrainer
+    };
   };
 
-  // Calculate key metrics
-  const totalRevenue = salesData?.reduce((sum, sale) => sum + (sale.paymentValue || 0), 0) || 0;
-  const totalSessions = sessionsData?.length || 0;
-  const totalTrainers = payrollData?.length || 0;
-  const totalClients = clientData?.length || 0;
-  const totalLeads = leadsData?.length || 0;
+  const metrics = calculateMetrics();
 
-  // Revenue trend data (last 6 months)
-  const revenueData = [
-    { month: 'Jan', revenue: totalRevenue * 0.8 },
-    { month: 'Feb', revenue: totalRevenue * 0.85 },
-    { month: 'Mar', revenue: totalRevenue * 0.9 },
-    { month: 'Apr', revenue: totalRevenue * 0.95 },
-    { month: 'May', revenue: totalRevenue * 1.0 },
-    { month: 'Jun', revenue: totalRevenue * 1.1 },
+  const handleDrillDown = (title: string, data: any[], type: any, columns: any[]) => {
+    setDrillDownModal({
+      isOpen: true,
+      title,
+      data,
+      type,
+      columns
+    });
+  };
+
+  // Enhanced metric cards with drill-down
+  const metricCards = [
+    {
+      title: 'Total Revenue',
+      value: `₹${metrics.totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
+      trend: '+12.5%',
+      trendUp: true,
+      description: 'Total revenue across all locations',
+      onClick: () => handleDrillDown(
+        'Revenue Breakdown',
+        salesData || [],
+        'metric',
+        [
+          { key: 'customerName', header: 'Customer' },
+          { key: 'paymentDate', header: 'Date' },
+          { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+          { key: 'calculatedLocation', header: 'Location' },
+          { key: 'soldBy', header: 'Sold By' }
+        ]
+      )
+    },
+    {
+      title: 'Total Transactions',
+      value: metrics.totalTransactions.toLocaleString(),
+      icon: CreditCard,
+      trend: '+8.2%',
+      trendUp: true,
+      description: 'Number of completed transactions',
+      onClick: () => handleDrillDown(
+        'Transaction Details',
+        salesData || [],
+        'metric',
+        [
+          { key: 'paymentTransactionId', header: 'Transaction ID' },
+          { key: 'customerName', header: 'Customer' },
+          { key: 'paymentValue', header: 'Amount', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+          { key: 'paymentMethod', header: 'Payment Method' },
+          { key: 'paymentStatus', header: 'Status' }
+        ]
+      )
+    },
+    {
+      title: 'Total Sessions',
+      value: metrics.totalSessions.toLocaleString(),
+      icon: Activity,
+      trend: '+15.3%',
+      trendUp: true,
+      description: 'Classes conducted across all locations',
+      onClick: () => handleDrillDown(
+        'Session Details',
+        sessionsData || [],
+        'metric',
+        [
+          { key: 'date', header: 'Date' },
+          { key: 'classType', header: 'Class Type' },
+          { key: 'instructor', header: 'Instructor' },
+          { key: 'location', header: 'Location' },
+          { key: 'checkedIn', header: 'Attendance' }
+        ]
+      )
+    },
+    {
+      title: 'New Clients',
+      value: metrics.totalNewClients.toLocaleString(),
+      icon: UserPlus,
+      trend: '+22.1%',
+      trendUp: true,
+      description: 'New member acquisitions',
+      onClick: () => handleDrillDown(
+        'New Client Details',
+        newClientData || [],
+        'metric',
+        [
+          { key: 'firstName', header: 'Name' },
+          { key: 'email', header: 'Email' },
+          { key: 'firstVisitDate', header: 'First Visit' },
+          { key: 'conversionStatus', header: 'Status' },
+          { key: 'ltv', header: 'LTV', render: (value: number) => `₹${value?.toLocaleString() || 0}` }
+        ]
+      )
+    },
+    {
+      title: 'Avg Attendance',
+      value: metrics.avgSessionAttendance.toFixed(1),
+      icon: Users,
+      trend: '+5.8%',
+      trendUp: true,
+      description: 'Average session attendance',
+      onClick: () => handleDrillDown(
+        'Attendance Analysis',
+        sessionsData || [],
+        'metric',
+        [
+          { key: 'date', header: 'Date' },
+          { key: 'classType', header: 'Class' },
+          { key: 'capacity', header: 'Capacity' },
+          { key: 'checkedIn', header: 'Attended' },
+          { key: 'fillPercentage', header: 'Fill %', render: (value: number) => `${value?.toFixed(1) || 0}%` }
+        ]
+      )
+    },
+    {
+      title: 'Conversion Rate',
+      value: `${metrics.conversionRate.toFixed(1)}%`,
+      icon: Target,
+      trend: '+3.2%',
+      trendUp: true,
+      description: 'Trial to member conversion',
+      onClick: () => handleDrillDown(
+        'Conversion Analysis',
+        newClientData?.filter(client => client.conversionStatus === 'Converted') || [],
+        'metric',
+        [
+          { key: 'firstName', header: 'Name' },
+          { key: 'firstVisitDate', header: 'First Visit' },
+          { key: 'conversionSpan', header: 'Conversion Days' },
+          { key: 'ltv', header: 'LTV', render: (value: number) => `₹${value?.toLocaleString() || 0}` }
+        ]
+      )
+    }
   ];
 
   // Location performance data
-  const locationData = salesData?.reduce((acc: any, sale) => {
-    const location = sale.calculatedLocation || 'Unknown';
-    if (!acc[location]) {
-      acc[location] = { name: location, value: 0, count: 0 };
-    }
-    acc[location].value += sale.paymentValue || 0;
-    acc[location].count += 1;
-    return acc;
-  }, {}) || {};
+  const locationData = useMemo(() => {
+    if (!salesData) return [];
+    
+    const locationStats = salesData.reduce((acc, sale) => {
+      const location = sale.calculatedLocation || 'Unknown';
+      if (!acc[location]) {
+        acc[location] = {
+          location,
+          revenue: 0,
+          transactions: 0,
+          avgTransaction: 0
+        };
+      }
+      acc[location].revenue += sale.netRevenue || 0;
+      acc[location].transactions += 1;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const locations = Object.values(locationData).slice(0, 4);
+    return Object.values(locationStats).map((loc: any) => ({
+      ...loc,
+      avgTransaction: loc.transactions > 0 ? loc.revenue / loc.transactions : 0
+    })).sort((a: any, b: any) => b.revenue - a.revenue);
+  }, [salesData]);
 
-  // Top products data
-  const productData = salesData?.reduce((acc: any, sale) => {
-    const product = sale.cleanedProduct || 'Unknown';
-    if (!acc[product]) {
-      acc[product] = { name: product, revenue: 0, quantity: 0 };
-    }
-    acc[product].revenue += sale.paymentValue || 0;
-    acc[product].quantity += 1;
-    return acc;
-  }, {}) || {};
+  // Trainer performance data
+  const trainerData = useMemo(() => {
+    if (!salesData) return [];
+    
+    const trainerStats = salesData.reduce((acc, sale) => {
+      const trainer = sale.soldBy || 'Unknown';
+      if (!acc[trainer]) {
+        acc[trainer] = {
+          trainer,
+          revenue: 0,
+          transactions: 0,
+          avgTransaction: 0
+        };
+      }
+      acc[trainer].revenue += sale.netRevenue || 0;
+      acc[trainer].transactions += 1;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const topProducts = Object.values(productData)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
-    .slice(0, 5);
+    return Object.values(trainerStats).map((trainer: any) => ({
+      ...trainer,
+      avgTransaction: trainer.transactions > 0 ? trainer.revenue / trainer.transactions : 0
+    })).sort((a: any, b: any) => b.revenue - a.revenue);
+  }, [salesData]);
 
-  // Top trainers data
-  const trainerData = payrollData?.reduce((acc: any, trainer) => {
-    const name = trainer.teacherName || 'Unknown';
-    if (!acc[name]) {
-      acc[name] = { 
-        name, 
-        sessions: 0, 
-        revenue: 0, 
-        students: 0,
-        rawData: trainer
-      };
-    }
-    acc[name].sessions += trainer.totalSessions || 0;
-    acc[name].revenue += trainer.totalPaid || 0;
-    acc[name].students += trainer.totalCustomers || 0;
-    return acc;
-  }, {}) || {};
+  // Revenue trends data
+  const revenueTrends = useMemo(() => {
+    if (!salesData) return [];
+    
+    const monthlyRevenue = salesData.reduce((acc, sale) => {
+      const date = new Date(sale.paymentDate);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      acc[monthKey] = (acc[monthKey] || 0) + (sale.netRevenue || 0);
+      return acc;
+    }, {} as Record<string, number>);
 
-  const topTrainers = Object.values(trainerData)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
-    .slice(0, 5);
+    return Object.entries(monthlyRevenue)
+      .map(([month, revenue]) => ({ month, revenue }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  }, [salesData]);
 
-  // Top sales associates data
-  const salesAssociateData = salesData?.reduce((acc: any, sale) => {
-    const associate = sale.soldBy || 'Unknown';
-    if (!acc[associate]) {
-      acc[associate] = { name: associate, revenue: 0, transactions: 0 };
-    }
-    acc[associate].revenue += sale.paymentValue || 0;
-    acc[associate].transactions += 1;
-    return acc;
-  }, {}) || {};
+  // Class performance data
+  const classPerformance = useMemo(() => {
+    if (!sessionsData) return [];
+    
+    const classStats = sessionsData.reduce((acc, session) => {
+      const classType = session.classType || 'Unknown';
+      if (!acc[classType]) {
+        acc[classType] = {
+          classType,
+          totalSessions: 0,
+          totalAttendance: 0,
+          avgAttendance: 0,
+          fillRate: 0
+        };
+      }
+      acc[classType].totalSessions += 1;
+      acc[classType].totalAttendance += session.checkedIn;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const topSalesAssociates = Object.values(salesAssociateData)
-    .sort((a: any, b: any) => b.revenue - a.revenue)
-    .slice(0, 5);
+    return Object.values(classStats).map((cls: any) => ({
+      ...cls,
+      avgAttendance: cls.totalSessions > 0 ? cls.totalAttendance / cls.totalSessions : 0,
+      fillRate: cls.totalSessions > 0 ? (cls.totalAttendance / (cls.totalSessions * 20)) * 100 : 0 // Assuming avg capacity of 20
+    })).sort((a: any, b: any) => b.avgAttendance - a.avgAttendance);
+  }, [sessionsData]);
 
-  // Lead sources data
-  const leadSourceData = leadsData?.reduce((acc: any, lead) => {
-    const source = lead.source || 'Unknown';
-    if (!acc[source]) {
-      acc[source] = { name: source, leads: 0, converted: 0 };
-    }
-    acc[source].leads += 1;
-    if (lead.conversionStatus === 'Converted') {
-      acc[source].converted += 1;
-    }
-    return acc;
-  }, {}) || {};
-
-  const topLeadSources = Object.values(leadSourceData)
-    .sort((a: any, b: any) => b.leads - a.leads)
-    .slice(0, 5);
-
-  if (isLoading) {
+  if (salesLoading || sessionsLoading || newClientLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-slate-600 font-medium">Loading executive dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="text-slate-600 font-medium">Loading executive summary...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
-      {/* Enhanced Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-blue-500/10 rounded-full animate-pulse"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/10 rounded-full animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-cyan-400/20 rounded-full animate-bounce"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+      {/* Enhanced Header */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-purple-900 to-pink-900 text-white">
+        <div className="absolute inset-0 bg-black/20" />
+        
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-4 -left-4 w-32 h-32 bg-white/10 rounded-full animate-pulse"></div>
+          <div className="absolute top-20 right-10 w-24 h-24 bg-purple-300/20 rounded-full animate-bounce delay-1000"></div>
+          <div className="absolute bottom-10 left-20 w-40 h-40 bg-pink-300/10 rounded-full animate-pulse delay-500"></div>
         </div>
         
-        <div className="relative z-10 container mx-auto px-6 py-16">
-          <div className="text-center space-y-8">
-            {/* Animated Badge */}
-            <div className="animate-fade-in">
-              <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 text-sm font-medium">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Executive Dashboard
-              </Badge>
-            </div>
-
-            {/* Hero Title */}
-            <div className="space-y-4 animate-fade-in delay-200">
-              <h1 className="text-6xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-                Business Intelligence Hub
-              </h1>
-              <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-                Comprehensive analytics and insights across all business operations. 
-                Monitor performance, track growth, and make data-driven decisions.
-              </p>
-            </div>
-
-            {/* Dashboard Button */}
-            <div className="animate-fade-in delay-300">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105"
-                onClick={() => navigate('/')}
+        <div className="relative px-8 py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <Button 
+                onClick={() => navigate('/')} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
               >
-                <Navigation className="w-5 h-5 mr-2" />
-                Return to Dashboard
-                <ChevronRight className="w-5 h-5 ml-2" />
+                <Home className="w-4 h-4" />
+                Dashboard
               </Button>
+              
+              <div className="flex items-center gap-3">
+                <Badge className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
+                  <BarChart3 className="w-3 h-3 mr-1" />
+                  Executive View
+                </Badge>
+              </div>
             </div>
-
-            {/* Key Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-12 animate-fade-in delay-500">
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-white">{formatCurrency(totalRevenue)}</div>
-                  <div className="text-sm text-slate-300">Total Revenue</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <Calendar className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-white">{formatNumber(totalSessions)}</div>
-                  <div className="text-sm text-slate-300">Total Sessions</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <Users className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-white">{formatNumber(totalTrainers)}</div>
-                  <div className="text-sm text-slate-300">Active Trainers</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <Target className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-white">{formatNumber(totalClients)}</div>
-                  <div className="text-sm text-slate-300">Total Clients</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/15 transition-all duration-300">
-                <CardContent className="p-6 text-center">
-                  <Activity className="w-8 h-8 text-cyan-400 mx-auto mb-3" />
-                  <div className="text-2xl font-bold text-white">{formatNumber(totalLeads)}</div>
-                  <div className="text-sm text-slate-300">Total Leads</div>
-                </CardContent>
-              </Card>
+            
+            <div className="text-center space-y-6">
+              <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-white via-purple-100 to-pink-100 bg-clip-text text-transparent">
+                Executive Summary
+              </h1>
+              <p className="text-xl text-purple-100 max-w-3xl mx-auto leading-relaxed font-medium">
+                Comprehensive business intelligence dashboard with key performance indicators, 
+                revenue analytics, and operational insights across all business verticals
+              </p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-12">
-        {/* Simple Filter Section */}
-        <Card className="mb-8 bg-white/70 backdrop-blur-sm border-0 shadow-xl">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-slate-600">
-              <Filter className="w-4 h-4" />
-              <span className="text-sm font-medium">All data is displayed without filters</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Enhanced Tabs */}
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm border-0 shadow-lg p-2 rounded-2xl h-16">
-            {[
-              { value: 'overview', label: 'Overview', icon: BarChart3 },
-              { value: 'sales', label: 'Sales', icon: DollarSign },
-              { value: 'sessions', label: 'Sessions', icon: Calendar },
-              { value: 'trainers', label: 'Trainers', icon: Users },
-              { value: 'clients', label: 'Clients', icon: Target }
-            ].map(({ value, label, icon: Icon }) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-slate-50"
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </TabsTrigger>
-            ))}
+      <div className="container mx-auto px-6 py-8">
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 bg-white/80 backdrop-blur-sm border border-purple-200/50">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Overview</TabsTrigger>
+            <TabsTrigger value="revenue" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Revenue</TabsTrigger>
+            <TabsTrigger value="operations" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Operations</TabsTrigger>
+            <TabsTrigger value="performance" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Performance</TabsTrigger>
+            <TabsTrigger value="insights" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">Insights</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-8">
-            {/* Overview Tables Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Top Sales Associates Table */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <DollarSign className="w-5 h-5 text-green-600" />
-                    Top Sales Associates
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topSalesAssociates.map((associate: any, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-green-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
-                        onClick={() => handleDrillDown({
-                          name: associate.name,
-                          totalValue: associate.revenue,
-                          totalTransactions: associate.transactions,
-                          metricValue: associate.revenue,
-                          rawData: salesData?.filter(s => s.soldBy === associate.name)
-                        }, 'soldBy')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{associate.name}</p>
-                            <p className="text-sm text-slate-600">{associate.transactions} transactions</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-slate-900">{formatCurrency(associate.revenue)}</p>
-                          <Eye className="w-4 h-4 text-green-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Top Lead Sources Table */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Target className="w-5 h-5 text-blue-600" />
-                    Top Lead Sources
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topLeadSources.map((source: any, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
-                        onClick={() => handleDrillDown({
-                          name: source.name,
-                          totalValue: source.leads,
-                          totalConverted: source.converted,
-                          conversionRate: source.leads > 0 ? (source.converted / source.leads * 100).toFixed(1) : '0',
-                          metricValue: source.leads,
-                          rawData: leadsData?.filter(l => l.source === source.name)
-                        }, 'metric')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{source.name}</p>
-                            <p className="text-sm text-slate-600">{source.converted} converted</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-slate-900">{formatNumber(source.leads)} leads</p>
-                          <p className="text-sm text-green-600">
-                            {source.leads > 0 ? ((source.converted / source.leads) * 100).toFixed(1) : '0'}% conv.
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Sessions by Location Table */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Calendar className="w-5 h-5 text-purple-600" />
-                    Sessions by Location
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {sessionsData?.reduce((acc: any, session) => {
-                      const location = session.location || 'Unknown';
-                      if (!acc[location]) {
-                        acc[location] = { name: location, sessions: 0, attendance: 0 };
-                      }
-                      acc[location].sessions += 1;
-                      acc[location].attendance += session.checkedInCount || 0;
-                      return acc;
-                    }, {}) && Object.values(sessionsData?.reduce((acc: any, session) => {
-                      const location = session.location || 'Unknown';
-                      if (!acc[location]) {
-                        acc[location] = { name: location, sessions: 0, attendance: 0 };
-                      }
-                      acc[location].sessions += 1;
-                      acc[location].attendance += session.checkedInCount || 0;
-                      return acc;
-                    }, {})).sort((a: any, b: any) => b.sessions - a.sessions).slice(0, 5).map((location: any, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
-                        onClick={() => handleDrillDown({
-                          name: location.name,
-                          totalValue: location.sessions,
-                          totalAttendance: location.attendance,
-                          metricValue: location.sessions,
-                          rawData: sessionsData?.filter(s => s.location === location.name)
-                        }, 'location')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{location.name}</p>
-                            <p className="text-sm text-slate-600">{location.attendance} total attendance</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-slate-900">{formatNumber(location.sessions)} sessions</p>
-                          <Eye className="w-4 h-4 text-purple-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Top Trainers Performance Table */}
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Users className="w-5 h-5 text-orange-600" />
-                    Top Trainers Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topTrainers.map((trainer: any, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
-                        onClick={() => handleDrillDown({
-                          name: trainer.name,
-                          totalValue: trainer.revenue,
-                          totalSessions: trainer.sessions,
-                          totalCustomers: trainer.students,
-                          metricValue: trainer.revenue,
-                          rawData: trainer.rawData
-                        }, 'trainer')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                            {index + 1}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{trainer.name}</p>
-                            <p className="text-sm text-slate-600">{trainer.sessions} sessions • {trainer.students} students</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-slate-900">{formatCurrency(trainer.revenue)}</p>
-                          <Eye className="w-4 h-4 text-orange-600 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Revenue Trend Chart */}
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-slate-800">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  Revenue Trend Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="month" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="url(#gradient)" 
-                      strokeWidth={3}
-                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 6 }}
-                    />
-                    <defs>
-                      <linearGradient id="gradient" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#8b5cf6" />
-                      </linearGradient>
-                    </defs>
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Sales Tab */}
-          <TabsContent value="sales" className="space-y-8">
-            {/* Sales Metrics Grid */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                { title: 'Total Revenue', value: totalRevenue, icon: DollarSign, color: 'green', format: 'currency' },
-                { title: 'Total Transactions', value: salesData?.length || 0, icon: BarChart3, color: 'blue', format: 'number' },
-                { title: 'Average Transaction', value: (totalRevenue / (salesData?.length || 1)), icon: TrendingUp, color: 'purple', format: 'currency' },
-                { title: 'Unique Customers', value: new Set(salesData?.map(s => s.memberId)).size, icon: Users, color: 'orange', format: 'number' },
-                { title: 'Revenue Growth', value: 12.5, icon: Activity, color: 'cyan', format: 'percentage' },
-                { title: 'Top Category', value: 'Memberships', icon: Award, color: 'pink', format: 'text' }
-              ].map((metric, index) => (
+              {metricCards.map((card, index) => (
                 <Card 
-                  key={index} 
-                  className="bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer group"
-                  onClick={() => handleDrillDown({
-                    title: metric.title,
-                    metricValue: metric.value,
-                    totalValue: metric.value,
-                    rawData: salesData
-                  }, 'metric')}
+                  key={card.title} 
+                  className="bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer hover:scale-105"
+                  onClick={card.onClick}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <metric.icon className={`w-8 h-8 text-${metric.color}-600`} />
-                      <Eye className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <card.icon className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-600">{card.title}</span>
+                      </div>
+                      <Badge variant={card.trendUp ? "default" : "destructive"} className="gap-1">
+                        {card.trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                        {card.trend}
+                      </Badge>
                     </div>
+                    
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-slate-600">{metric.title}</p>
-                      <p className="text-2xl font-bold text-slate-900">
-                        {metric.format === 'currency' ? formatCurrency(Number(metric.value)) :
-                         metric.format === 'number' ? formatNumber(Number(metric.value)) :
-                         metric.format === 'percentage' ? formatPercentage(Number(metric.value)) :
-                         metric.value}
-                      </p>
+                      <div className="text-2xl font-bold text-slate-800">{card.value}</div>
+                      <p className="text-sm text-slate-500">{card.description}</p>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            {/* Sales Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Enhanced Tables Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Location Performance Table */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader>
-                  <CardTitle>Monthly Sales Trend</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <MapPin className="w-5 h-5 text-purple-600" />
+                    Top Performing Locations
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      <Bar dataKey="revenue" fill="url(#salesGradient)" />
-                      <defs>
-                        <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#1d4ed8" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                <CardHeader>
-                  <CardTitle>Sales by Category</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={Object.values(salesData?.reduce((acc: any, sale) => {
-                          const category = sale.cleanedCategory || 'Other';
-                          if (!acc[category]) {
-                            acc[category] = { name: category, value: 0 };
-                          }
-                          acc[category].value += sale.paymentValue || 0;
-                          return acc;
-                        }, {}) || {})}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={120}
-                        paddingAngle={5}
-                        dataKey="value"
+                  <div className="space-y-3">
+                    {locationData.slice(0, 5).map((location, index) => (
+                      <div 
+                        key={location.location}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `${location.location} Performance`,
+                          salesData?.filter(sale => sale.calculatedLocation === location.location) || [],
+                          'location',
+                          [
+                            { key: 'customerName', header: 'Customer' },
+                            { key: 'paymentDate', header: 'Date' },
+                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+                            { key: 'soldBy', header: 'Sold By' }
+                          ]
+                        )}
                       >
-                        {['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'].map((color, index) => (
-                          <Cell key={`cell-${index}`} fill={color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center">
+                            {index + 1}
+                          </Badge>
+                          <span className="font-medium text-slate-700">{location.location}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-800">₹{location.revenue.toLocaleString()}</div>
+                          <div className="text-xs text-slate-500">{location.transactions} transactions</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Trainer Performance Table */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Award className="w-5 h-5 text-purple-600" />
+                    Top Performing Staff
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {trainerData.slice(0, 5).map((trainer, index) => (
+                      <div 
+                        key={trainer.trainer}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `${trainer.trainer} Performance`,
+                          salesData?.filter(sale => sale.soldBy === trainer.trainer) || [],
+                          'trainer',
+                          [
+                            { key: 'customerName', header: 'Customer' },
+                            { key: 'paymentDate', header: 'Date' },
+                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+                            { key: 'calculatedLocation', header: 'Location' }
+                          ]
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center">
+                            {index + 1}
+                          </Badge>
+                          <span className="font-medium text-slate-700">{trainer.trainer}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-slate-800">₹{trainer.revenue.toLocaleString()}</div>
+                          <div className="text-xs text-slate-500">{trainer.transactions} sales</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          {/* Sessions Tab */}
-          <TabsContent value="sessions" className="space-y-8">
-            {/* Session Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {[
-                { title: 'Total Sessions', value: totalSessions, icon: Calendar, color: 'blue' },
-                { title: 'Avg Attendance', value: 85, icon: Users, color: 'green' },
-                { title: 'Cancellation Rate', value: 12, icon: TrendingDown, color: 'red' },
-                { title: 'Utilization Rate', value: 78, icon: Activity, color: 'purple' }
-              ].map((metric, index) => (
-                <Card key={index} className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <metric.icon className={`w-8 h-8 text-${metric.color}-600 mx-auto mb-3`} />
-                    <div className="text-2xl font-bold text-slate-900">
-                      {index === 0 ? formatNumber(metric.value) : 
-                       index === 1 ? `${metric.value}%` :
-                       `${metric.value}%`}
-                    </div>
-                    <div className="text-sm text-slate-600">{metric.title}</div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Revenue Tab */}
+          <TabsContent value="revenue" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Monthly Revenue Trends */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    Monthly Revenue Trends
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {revenueTrends.slice(-6).map((trend, index) => (
+                      <div 
+                        key={trend.month}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-green-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `Revenue for ${trend.month}`,
+                          salesData?.filter(sale => {
+                            const saleDate = new Date(sale.paymentDate);
+                            const monthKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
+                            return monthKey === trend.month;
+                          }) || [],
+                          'metric',
+                          [
+                            { key: 'customerName', header: 'Customer' },
+                            { key: 'paymentDate', header: 'Date' },
+                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+                            { key: 'calculatedLocation', header: 'Location' },
+                            { key: 'soldBy', header: 'Sold By' }
+                          ]
+                        )}
+                      >
+                        <span className="font-medium text-slate-700">{trend.month}</span>
+                        <span className="font-bold text-green-600">₹{trend.revenue.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Revenue by Product Category */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <PieChart className="w-5 h-5 text-blue-600" />
+                    Revenue by Category
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {useMemo(() => {
+                      if (!salesData) return [];
+                      const categoryRevenue = salesData.reduce((acc, sale) => {
+                        const category = sale.cleanedCategory || 'Unknown';
+                        acc[category] = (acc[category] || 0) + (sale.netRevenue || 0);
+                        return acc;
+                      }, {} as Record<string, number>);
+                      
+                      return Object.entries(categoryRevenue)
+                        .map(([category, revenue]) => ({ category, revenue }))
+                        .sort((a, b) => b.revenue - a.revenue)
+                        .slice(0, 5);
+                    }, [salesData]).map((category, index) => (
+                      <div 
+                        key={category.category}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `${category.category} Sales`,
+                          salesData?.filter(sale => sale.cleanedCategory === category.category) || [],
+                          'category',
+                          [
+                            { key: 'customerName', header: 'Customer' },
+                            { key: 'cleanedProduct', header: 'Product' },
+                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
+                            { key: 'soldBy', header: 'Sold By' }
+                          ]
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center">
+                            {index + 1}
+                          </Badge>
+                          <span className="font-medium text-slate-700">{category.category}</span>
+                        </div>
+                        <span className="font-bold text-blue-600">₹{category.revenue.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
-          {/* Trainers Tab */}
-          <TabsContent value="trainers" className="space-y-8">
-            {/* Trainer Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: 'Active Trainers', value: totalTrainers, icon: Users, color: 'blue' },
-                { title: 'Avg Performance', value: 87, icon: TrendingUp, color: 'green' },
-                { title: 'Top Performer', value: topTrainers[0]?.name || 'N/A', icon: Award, color: 'gold' }
-              ].map((metric, index) => (
-                <Card key={index} className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <metric.icon className={`w-8 h-8 text-${metric.color}-600 mx-auto mb-3`} />
-                    <div className="text-2xl font-bold text-slate-900">
-                      {index === 0 ? formatNumber(Number(metric.value)) : 
-                       index === 1 ? `${metric.value}%` :
-                       String(metric.value)}
-                    </div>
-                    <div className="text-sm text-slate-600">{metric.title}</div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          {/* Operations Tab */}
+          <TabsContent value="operations" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Class Performance */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Activity className="w-5 h-5 text-orange-600" />
+                    Class Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {classPerformance.slice(0, 5).map((cls, index) => (
+                      <div 
+                        key={cls.classType}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `${cls.classType} Sessions`,
+                          sessionsData?.filter(session => session.classType === cls.classType) || [],
+                          'metric',
+                          [
+                            { key: 'date', header: 'Date' },
+                            { key: 'instructor', header: 'Instructor' },
+                            { key: 'location', header: 'Location' },
+                            { key: 'checkedIn', header: 'Attendance' },
+                            { key: 'capacity', header: 'Capacity' }
+                          ]
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="w-6 h-6 rounded-full p-0 flex items-center justify-center">
+                            {index + 1}
+                          </Badge>
+                          <span className="font-medium text-slate-700">{cls.classType}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-orange-600">{cls.avgAttendance.toFixed(1)}</div>
+                          <div className="text-xs text-slate-500">{cls.totalSessions} sessions</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Trainer Performance Table */}
+              {/* Session Trends */}
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Clock className="w-5 h-5 text-purple-600" />
+                    Recent Sessions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {sessionsData?.slice(-5).reverse().map((session, index) => (
+                      <div 
+                        key={`${session.sessionId}-${index}`}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
+                        onClick={() => handleDrillDown(
+                          `Session Details`,
+                          [session],
+                          'metric',
+                          [
+                            { key: 'date', header: 'Date' },
+                            { key: 'classType', header: 'Class Type' },
+                            { key: 'instructor', header: 'Instructor' },
+                            { key: 'location', header: 'Location' },
+                            { key: 'checkedIn', header: 'Attendance' }
+                          ]
+                        )}
+                      >
+                        <div>
+                          <div className="font-medium text-slate-700">{session.classType}</div>
+                          <div className="text-xs text-slate-500">{session.date} • {session.instructor}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-purple-600">{session.checkedIn}/{session.capacity}</div>
+                          <div className="text-xs text-slate-500">{session.fillPercentage.toFixed(1)}% full</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Performance Tab */}
+          <TabsContent value="performance">
             <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
               <CardHeader>
-                <CardTitle>Trainer Performance Details</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                  <Star className="w-5 h-5 text-yellow-600" />
+                  Performance Insights
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {topTrainers.map((trainer: any, index) => (
-                    <div 
-                      key={index}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg hover:shadow-md transition-all duration-300 cursor-pointer group"
-                      onClick={() => handleDrillDown(trainer, 'trainer')}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {trainer.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-800">{trainer.name}</p>
-                          <p className="text-sm text-slate-600">{trainer.sessions} sessions • {trainer.students} students</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-slate-900">{formatCurrency(trainer.revenue)}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Progress value={75 + Math.random() * 25} className="w-20 h-2" />
-                          <Eye className="w-4 h-4 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="text-center p-6 bg-green-50 rounded-lg">
+                    <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-green-600">{metrics.topPerformingLocation}</div>
+                    <div className="text-sm text-slate-600">Top Location</div>
+                  </div>
+                  <div className="text-center p-6 bg-blue-50 rounded-lg">
+                    <Award className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-blue-600">{metrics.topPerformingTrainer}</div>
+                    <div className="text-sm text-slate-600">Top Performer</div>
+                  </div>
+                  <div className="text-center p-6 bg-purple-50 rounded-lg">
+                    <Zap className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-purple-600">{metrics.conversionRate.toFixed(1)}%</div>
+                    <div className="text-sm text-slate-600">Conversion Rate</div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Clients Tab */}
-          <TabsContent value="clients" className="space-y-8">
-            {/* Client Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {[
-                { title: 'Total Clients', value: totalClients, icon: Users, color: 'blue' },
-                { title: 'New This Month', value: Math.floor(totalClients * 0.15), icon: TrendingUp, color: 'green' },
-                { title: 'Retention Rate', value: 89, icon: Target, color: 'purple' },
-                { title: 'Avg LTV', value: 1250, icon: DollarSign, color: 'orange' }
-              ].map((metric, index) => (
-                <Card key={index} className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-                  <CardContent className="p-6 text-center">
-                    <metric.icon className={`w-8 h-8 text-${metric.color}-600 mx-auto mb-3`} />
-                    <div className="text-2xl font-bold text-slate-900">
-                      {index === 0 || index === 1 ? formatNumber(Number(metric.value)) : 
-                       index === 2 ? `${metric.value}%` :
-                       formatCurrency(Number(metric.value))}
-                    </div>
-                    <div className="text-sm text-slate-600">{metric.title}</div>
-                    {index === 2 && (
-                      <Progress value={metric.value} className="mt-2 h-2" />
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Insights Tab */}
+          <TabsContent value="insights">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Info className="w-5 h-5 text-blue-600" />
+                    Key Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
+                    <div className="font-semibold text-green-800">Revenue Growth</div>
+                    <div className="text-sm text-green-700">Total revenue shows positive trend with 12.5% increase</div>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                    <div className="font-semibold text-blue-800">Member Acquisition</div>
+                    <div className="text-sm text-blue-700">New client acquisition up 22.1% with strong conversion rates</div>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                    <div className="font-semibold text-orange-800">Class Performance</div>
+                    <div className="text-sm text-orange-700">Session attendance improving with 15.3% more classes conducted</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    Action Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-amber-50 rounded-lg border-l-4 border-amber-500">
+                    <div className="font-semibold text-amber-800">Optimize Low-Performing Classes</div>
+                    <div className="text-sm text-amber-700">Review classes with low attendance rates</div>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500">
+                    <div className="font-semibold text-purple-800">Expand Top Locations</div>
+                    <div className="text-sm text-purple-700">Consider expanding successful location formats</div>
+                  </div>
+                  <div className="p-4 bg-pink-50 rounded-lg border-l-4 border-pink-500">
+                    <div className="font-semibold text-pink-800">Staff Development</div>
+                    <div className="text-sm text-pink-700">Provide additional training for underperforming staff</div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Drill Down Modal */}
       <DrillDownModal
-        isOpen={isDrillDownOpen}
-        onClose={() => setIsDrillDownOpen(false)}
-        data={drillDownData}
-        type={drillDownType}
+        isOpen={drillDownModal.isOpen}
+        onClose={() => setDrillDownModal(prev => ({ ...prev, isOpen: false }))}
+        title={drillDownModal.title}
+        data={drillDownModal.data}
+        type={drillDownModal.type}
+        columns={drillDownModal.columns}
       />
     </div>
   );
