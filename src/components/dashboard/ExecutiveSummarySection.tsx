@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ModernDataTable } from '@/components/ui/ModernDataTable';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
-import { ModernHeroSection } from '@/components/ui/ModernHeroSection';
 import { ExecutiveFilters } from '@/components/dashboard/ExecutiveFilters';
 import { 
   BarChart3, 
@@ -32,9 +31,15 @@ import {
   ArrowDownRight,
   Clock,
   MapPin,
-  Star
+  Star,
+  Home,
+  TrendingDown,
+  PieChart,
+  BarChart,
+  LineChart
 } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart } from 'recharts';
+import { LineChart as RechartsLineChart, Line, AreaChart, Area, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, ComposedChart, RadialBarChart, RadialBar } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useLeadsData } from '@/hooks/useLeadsData';
 import { useDiscountAnalysis } from '@/hooks/useDiscountAnalysis';
@@ -48,7 +53,6 @@ import { cn } from '@/lib/utils';
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#EC4899', '#14B8A6'];
 
-// Define types for better type safety
 interface ProductSummary {
   product: string;
   revenue: number;
@@ -72,19 +76,16 @@ interface LocationSummary {
 }
 
 export const ExecutiveSummarySection: React.FC = () => {
+  const navigate = useNavigate();
   const { data: salesData, loading: salesLoading } = useGoogleSheets();
   const { data: leadsData, loading: leadsLoading } = useLeadsData();
   const { metrics: discountMetrics, loading: discountLoading } = useDiscountAnalysis();
   const { data: sessionsData, loading: sessionsLoading } = useSessionsData();
   const { data: payrollData, isLoading: payrollLoading } = usePayrollData();
   const { data: newClientData, loading: newClientLoading } = useNewClientData();
-  const [showSourceModal, setShowSourceModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
 
   const loading = salesLoading || leadsLoading || discountLoading || sessionsLoading || payrollLoading || newClientLoading;
-
-  // Filter data to previous month by default
   const previousMonthRange = getPreviousMonthDateRange();
 
   // Comprehensive Sales Metrics
@@ -109,19 +110,14 @@ export const ExecutiveSummarySection: React.FC = () => {
     const uniqueMembers = new Set(filteredData.map((item: any) => item.memberId)).size;
     const avgOrderValue = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
-    // Calculate growth (mock data for now)
-    const revenueGrowth = 12.5;
-    const transactionGrowth = 8.3;
-    const memberGrowth = 15.7;
-
     return {
       revenue: totalRevenue,
       transactions: totalTransactions,
       members: uniqueMembers,
       avgOrderValue,
-      revenueGrowth,
-      transactionGrowth,
-      memberGrowth,
+      revenueGrowth: 12.5,
+      transactionGrowth: 8.3,
+      memberGrowth: 15.7,
       discountImpact: discountMetrics?.totalDiscountAmount || 0
     };
   }, [salesData, previousMonthRange, dateRange, discountMetrics]);
@@ -238,7 +234,6 @@ export const ExecutiveSummarySection: React.FC = () => {
       return acc;
     }, {});
 
-    // Add unique clients count
     Object.keys(monthlyData).forEach(monthKey => {
       const monthSales = salesData.filter(item => {
         const date = new Date(item.paymentDate);
@@ -293,16 +288,14 @@ export const ExecutiveSummarySection: React.FC = () => {
     );
   }
 
-  const AnimatedMetricCard = ({ title, value, change, subtitle, icon: Icon, color, trend, delay = 0 }: any) => (
+  const AnimatedMetricCard = ({ title, value, change, subtitle, icon: Icon, color, delay = 0 }: any) => (
     <Card className={cn(
       "group relative overflow-hidden transition-all duration-700 hover:shadow-2xl hover:scale-105",
       "bg-gradient-to-br from-white via-slate-50/50 to-white border-0 shadow-xl",
       "transform-gpu animate-fade-in cursor-pointer"
     )} style={{ animationDelay: `${delay}ms` }}>
-      {/* Animated Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-purple-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
-      {/* Top Border Animation */}
       <div className={cn(
         "absolute top-0 left-0 h-1 bg-gradient-to-r transition-all duration-700 group-hover:w-full",
         color === 'blue' ? 'from-blue-500 to-blue-600' :
@@ -374,32 +367,103 @@ export const ExecutiveSummarySection: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
-      {/* Modern Hero Section */}
-      <ModernHeroSection
-        title="Executive Intelligence Dashboard"
-        subtitle="Complete Business Performance Overview"
-        description="Comprehensive analytics and insights across all business operations with real-time data visualization and performance metrics."
-        badgeText="Executive Suite"
-        badgeIcon={Crown}
-        gradient="blue"
-        stats={[
-          {
-            value: formatCurrency(salesMetrics?.revenue || 0),
-            label: "Total Revenue",
-            icon: DollarSign
-          },
-          {
-            value: formatNumber(sessionMetrics?.totalSessions || 0),
-            label: "Sessions Delivered",
-            icon: Activity
-          },
-          {
-            value: formatNumber(clientMetrics?.totalNewClients || 0),
-            label: "New Clients",
-            icon: UserPlus
-          }
-        ]}
-      />
+      {/* Animated Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-20 -left-20 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute -bottom-20 right-20 w-80 h-80 bg-white/15 rounded-full blur-3xl animate-pulse delay-500" />
+          <div className="absolute inset-0 bg-grid-white/[0.05] bg-[size:50px_50px]" />
+        </div>
+        
+        <div className="relative px-6 md:px-8 py-12 md:py-16">
+          <div className="max-w-7xl mx-auto">
+            {/* Navigation */}
+            <div className="flex items-center justify-between mb-8">
+              <Button 
+                onClick={() => navigate('/')} 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 hover:border-white/40 transition-all duration-300"
+              >
+                <Home className="w-4 h-4" />
+                Dashboard
+              </Button>
+            </div>
+            
+            {/* Hero Content */}
+            <div className="text-center space-y-6">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-3 bg-white/15 backdrop-blur-md rounded-full px-6 py-3 border border-white/30 animate-fade-in">
+                <Crown className="w-5 h-5" />
+                <span className="font-semibold text-white">Executive Intelligence Dashboard</span>
+              </div>
+              
+              {/* Title */}
+              <div className="space-y-2 animate-fade-in delay-200">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight bg-gradient-to-r from-white via-white/95 to-white/90 bg-clip-text text-transparent">
+                  Business Performance Hub
+                </h1>
+                <p className="text-xl md:text-2xl font-medium text-white/90">
+                  Comprehensive Analytics & Real-Time Insights
+                </p>
+              </div>
+              
+              {/* Description */}
+              <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto leading-relaxed animate-fade-in delay-300">
+                Monitor your complete business ecosystem with advanced analytics, performance metrics, and actionable insights across all operations.
+              </p>
+              
+              {/* Key Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 animate-fade-in delay-500">
+                <div className="text-center group">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-white/20 rounded-xl flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">
+                      {formatCurrency(salesMetrics?.revenue || 0)}
+                    </div>
+                    <div className="text-sm md:text-base text-white/70 font-medium">
+                      Total Revenue
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center group">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Activity className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">
+                      {formatNumber(sessionMetrics?.totalSessions || 0)}
+                    </div>
+                    <div className="text-sm md:text-base text-white/70 font-medium">
+                      Sessions Delivered
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center group">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-white/20 rounded-xl flex items-center justify-center">
+                      <UserPlus className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-3xl md:text-4xl font-bold text-white mb-2">
+                      {formatNumber(clientMetrics?.totalNewClients || 0)}
+                    </div>
+                    <div className="text-sm md:text-base text-white/70 font-medium">
+                      New Clients
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50 to-transparent" />
+      </div>
 
       {/* Filters Section */}
       <div className="max-w-7xl mx-auto px-6 -mt-12 relative z-10">
@@ -570,7 +634,7 @@ export const ExecutiveSummarySection: React.FC = () => {
 
             <AnimatedChart title="Location Performance" icon={MapPin}>
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={locationMetrics} layout="horizontal">
+                <RechartsBarChart data={locationMetrics} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis 
                     type="number"
@@ -605,7 +669,7 @@ export const ExecutiveSummarySection: React.FC = () => {
                     ]}
                   />
                   <Bar dataKey="revenue" fill="#3B82F6" radius={[0, 4, 4, 0]} />
-                </BarChart>
+                </RechartsBarChart>
               </ResponsiveContainer>
             </AnimatedChart>
           </div>
