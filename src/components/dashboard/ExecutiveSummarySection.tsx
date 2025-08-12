@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -527,6 +528,10 @@ export const ExecutiveSummarySection: React.FC = () => {
         onClose={closeDrillDown}
         data={modalState.data}
         type={'metric' as const}
+        columns={[
+          { key: 'date', header: 'Date' },
+          { key: 'value', header: 'Value' }
+        ]}
       />
     </div>
   );
