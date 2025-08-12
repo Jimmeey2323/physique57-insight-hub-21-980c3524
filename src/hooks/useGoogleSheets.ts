@@ -9,6 +9,7 @@ const GOOGLE_CONFIG = {
   TOKEN_URL: "https://oauth2.googleapis.com/token"
 };
 
+
 const SPREADSHEET_ID = "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
 
 export const useGoogleSheets = () => {
@@ -65,39 +66,30 @@ export const useGoogleSheets = () => {
         return;
       }
 
+      const headers = rows[0];
       const salesData: SalesData[] = rows.slice(1).map((row: any[]) => ({
         memberId: row[0] || '',
         customerName: row[1] || '',
         customerEmail: row[2] || '',
-        payingMemberId: row[0] || '', // Using Member ID for consistency
         saleItemId: row[3] || '',
         paymentCategory: row[4] || '',
-        membershipType: row[24] || '',
-        paymentDate: row[5] || '',
-        paymentValue: parseFloat(row[6]) || 0,
-        paidInMoneyCredits: parseFloat(row[7]) || 0,
-        paymentVAT: parseFloat(row[8]) || 0,
-        paymentItem: row[9] || '',
+        membershipType: row[5] || '',
+        paymentDate: row[6] || '',
+        paymentValue: parseFloat(row[7]) || 0,
+        paidInMoneyCredits: parseFloat(row[8]) || 0,
+        paymentVAT: parseFloat(row[9]) || 0,
+        paymentItem: row[10] || '',
         paymentStatus: row[11] || '',
-        paymentMethod: row[10] || '',
-        paymentTransactionId: row[12] || '',
-        stripeToken: row[13] || '',
-        soldBy: row[14] || '',
-        saleReference: row[15] || '',
-        calculatedLocation: row[16] || '',
-        cleanedProduct: row[17] || '',
-        cleanedCategory: row[18] || '',
-        discountAmount: parseFloat(row[22]) || 0,
-        grossRevenue: parseFloat(row[21]) || 0, // MRP Post Tax
-        preTaxMrp: parseFloat(row[20]) || 0, // MRP Pre Tax
-        vat: parseFloat(row[8]) || 0, // Payment VAT
-        netRevenue: parseFloat(row[6]) || 0, // Payment Value
-        postTaxMrp: parseFloat(row[21]) || 0, // MRP Post Tax
-        grossDiscountPercent: parseFloat(row[23]) || 0,
-        netDiscountPercent: parseFloat(row[23]) || 0
+        paymentMethod: row[12] || '',
+        paymentTransactionId: row[13] || '',
+        stripeToken: row[14] || '',
+        soldBy: row[15] || '',
+        saleReference: row[16] || '',
+        calculatedLocation: row[17] || '',
+        cleanedProduct: row[18] || '',
+        cleanedCategory: row[19] || '',
       }));
 
-      console.log('Sales data loaded:', salesData.length, 'records');
       setData(salesData);
       setError(null);
     } catch (err) {
