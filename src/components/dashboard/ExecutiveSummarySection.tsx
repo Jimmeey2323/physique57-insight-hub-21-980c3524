@@ -51,12 +51,12 @@ interface FilterOptions {
 
 const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4'];
 
-export const ExecutiveSummarySection: React.FC = () => {
+const ExecutiveSummarySection: React.FC = () => {
   const navigate = useNavigate();
-  const { data: salesData, isLoading: salesLoading } = useSalesData();
-  const { data: sessionsData, isLoading: sessionsLoading } = useSessionsData();
-  const { data: payrollData, isLoading: payrollLoading } = usePayrollData();
-  const { data: clientData, isLoading: clientLoading } = useNewClientData();
+  const { data: salesData, loading: salesLoading } = useSalesData();
+  const { data: sessionsData, loading: sessionsLoading } = useSessionsData();
+  const { data: payrollData, loading: payrollLoading } = usePayrollData();
+  const { data: clientData, loading: clientLoading } = useNewClientData();
   
   const [filters, setFilters] = useState<FilterOptions>({
     dateRange: { start: '', end: '' },
@@ -130,16 +130,16 @@ export const ExecutiveSummarySection: React.FC = () => {
     if (!sessionsData?.length) return null;
     
     const totalSessions = sessionsData.length;
-    const totalBookings = sessionsData.reduce((sum, session) => sum + (session.booked || 0), 0);
-    const totalCheckins = sessionsData.reduce((sum, session) => sum + (session.checkedIn || 0), 0);
+    const totalBookings = sessionsData.reduce((sum, session) => sum + (session.checkedInCount || 0), 0);
+    const totalCheckins = sessionsData.reduce((sum, session) => sum + (session.checkedInCount || 0), 0);
     const averageFillRate = sessionsData.reduce((sum, session) => sum + (session.fillPercentage || 0), 0) / totalSessions;
     
     const classTypeBreakdown = sessionsData.reduce((acc, session) => {
       const type = session.cleanedClass || session.classType || 'Unknown';
       if (!acc[type]) acc[type] = { sessions: 0, bookings: 0, checkins: 0 };
       acc[type].sessions += 1;
-      acc[type].bookings += session.booked || 0;
-      acc[type].checkins += session.checkedIn || 0;
+      acc[type].bookings += session.checkedInCount || 0;
+      acc[type].checkins += session.checkedInCount || 0;
       return acc;
     }, {} as Record<string, any>);
 
@@ -843,3 +843,5 @@ export const ExecutiveSummarySection: React.FC = () => {
     </div>
   );
 };
+
+export default ExecutiveSummarySection;
