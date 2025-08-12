@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,10 +46,8 @@ const ExecutiveSummarySection = () => {
 
   const [drillDownModal, setDrillDownModal] = useState({
     isOpen: false,
-    title: '',
     data: [],
-    type: 'metric' as const,
-    columns: []
+    type: 'metric' as const
   });
 
   const calculateMetrics = () => {
@@ -70,7 +69,7 @@ const ExecutiveSummarySection = () => {
     const totalSessions = sessionsData.length;
     const totalNewClients = newClientData.length;
     const avgSessionAttendance = sessionsData.length > 0 
-      ? sessionsData.reduce((sum, session) => sum + session.checkedIn, 0) / sessionsData.length 
+      ? sessionsData.reduce((sum, session) => sum + session.checkedInCount, 0) / sessionsData.length 
       : 0;
 
     const convertedClients = newClientData.filter(client => client.conversionStatus === 'Converted').length;
@@ -110,140 +109,7 @@ const ExecutiveSummarySection = () => {
 
   const metrics = calculateMetrics();
 
-  const handleDrillDown = (title: string, data: any[], type: any, columns: any[]) => {
-    setDrillDownModal({
-      isOpen: true,
-      title,
-      data,
-      type,
-      columns
-    });
-  };
-
-  // Enhanced metric cards with drill-down
-  const metricCards = [
-    {
-      title: 'Total Revenue',
-      value: `₹${metrics.totalRevenue.toLocaleString()}`,
-      icon: DollarSign,
-      trend: '+12.5%',
-      trendUp: true,
-      description: 'Total revenue across all locations',
-      onClick: () => handleDrillDown(
-        'Revenue Breakdown',
-        salesData || [],
-        'metric',
-        [
-          { key: 'customerName', header: 'Customer' },
-          { key: 'paymentDate', header: 'Date' },
-          { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-          { key: 'calculatedLocation', header: 'Location' },
-          { key: 'soldBy', header: 'Sold By' }
-        ]
-      )
-    },
-    {
-      title: 'Total Transactions',
-      value: metrics.totalTransactions.toLocaleString(),
-      icon: CreditCard,
-      trend: '+8.2%',
-      trendUp: true,
-      description: 'Number of completed transactions',
-      onClick: () => handleDrillDown(
-        'Transaction Details',
-        salesData || [],
-        'metric',
-        [
-          { key: 'paymentTransactionId', header: 'Transaction ID' },
-          { key: 'customerName', header: 'Customer' },
-          { key: 'paymentValue', header: 'Amount', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-          { key: 'paymentMethod', header: 'Payment Method' },
-          { key: 'paymentStatus', header: 'Status' }
-        ]
-      )
-    },
-    {
-      title: 'Total Sessions',
-      value: metrics.totalSessions.toLocaleString(),
-      icon: Activity,
-      trend: '+15.3%',
-      trendUp: true,
-      description: 'Classes conducted across all locations',
-      onClick: () => handleDrillDown(
-        'Session Details',
-        sessionsData || [],
-        'metric',
-        [
-          { key: 'date', header: 'Date' },
-          { key: 'classType', header: 'Class Type' },
-          { key: 'instructor', header: 'Instructor' },
-          { key: 'location', header: 'Location' },
-          { key: 'checkedIn', header: 'Attendance' }
-        ]
-      )
-    },
-    {
-      title: 'New Clients',
-      value: metrics.totalNewClients.toLocaleString(),
-      icon: UserPlus,
-      trend: '+22.1%',
-      trendUp: true,
-      description: 'New member acquisitions',
-      onClick: () => handleDrillDown(
-        'New Client Details',
-        newClientData || [],
-        'metric',
-        [
-          { key: 'firstName', header: 'Name' },
-          { key: 'email', header: 'Email' },
-          { key: 'firstVisitDate', header: 'First Visit' },
-          { key: 'conversionStatus', header: 'Status' },
-          { key: 'ltv', header: 'LTV', render: (value: number) => `₹${value?.toLocaleString() || 0}` }
-        ]
-      )
-    },
-    {
-      title: 'Avg Attendance',
-      value: metrics.avgSessionAttendance.toFixed(1),
-      icon: Users,
-      trend: '+5.8%',
-      trendUp: true,
-      description: 'Average session attendance',
-      onClick: () => handleDrillDown(
-        'Attendance Analysis',
-        sessionsData || [],
-        'metric',
-        [
-          { key: 'date', header: 'Date' },
-          { key: 'classType', header: 'Class' },
-          { key: 'capacity', header: 'Capacity' },
-          { key: 'checkedIn', header: 'Attended' },
-          { key: 'fillPercentage', header: 'Fill %', render: (value: number) => `${value?.toFixed(1) || 0}%` }
-        ]
-      )
-    },
-    {
-      title: 'Conversion Rate',
-      value: `${metrics.conversionRate.toFixed(1)}%`,
-      icon: Target,
-      trend: '+3.2%',
-      trendUp: true,
-      description: 'Trial to member conversion',
-      onClick: () => handleDrillDown(
-        'Conversion Analysis',
-        newClientData?.filter(client => client.conversionStatus === 'Converted') || [],
-        'metric',
-        [
-          { key: 'firstName', header: 'Name' },
-          { key: 'firstVisitDate', header: 'First Visit' },
-          { key: 'conversionSpan', header: 'Conversion Days' },
-          { key: 'ltv', header: 'LTV', render: (value: number) => `₹${value?.toLocaleString() || 0}` }
-        ]
-      )
-    }
-  ];
-
-  // Location performance data
+  // Location performance data - moved to top
   const locationData = useMemo(() => {
     if (!salesData) return [];
     
@@ -268,7 +134,7 @@ const ExecutiveSummarySection = () => {
     })).sort((a: any, b: any) => b.revenue - a.revenue);
   }, [salesData]);
 
-  // Trainer performance data
+  // Trainer performance data - moved to top
   const trainerData = useMemo(() => {
     if (!salesData) return [];
     
@@ -293,7 +159,7 @@ const ExecutiveSummarySection = () => {
     })).sort((a: any, b: any) => b.revenue - a.revenue);
   }, [salesData]);
 
-  // Revenue trends data
+  // Revenue trends data - moved to top
   const revenueTrends = useMemo(() => {
     if (!salesData) return [];
     
@@ -309,7 +175,7 @@ const ExecutiveSummarySection = () => {
       .sort((a, b) => a.month.localeCompare(b.month));
   }, [salesData]);
 
-  // Class performance data
+  // Class performance data - moved to top
   const classPerformance = useMemo(() => {
     if (!sessionsData) return [];
     
@@ -325,7 +191,7 @@ const ExecutiveSummarySection = () => {
         };
       }
       acc[classType].totalSessions += 1;
-      acc[classType].totalAttendance += session.checkedIn;
+      acc[classType].totalAttendance += session.checkedInCount;
       return acc;
     }, {} as Record<string, any>);
 
@@ -335,6 +201,87 @@ const ExecutiveSummarySection = () => {
       fillRate: cls.totalSessions > 0 ? (cls.totalAttendance / (cls.totalSessions * 20)) * 100 : 0 // Assuming avg capacity of 20
     })).sort((a: any, b: any) => b.avgAttendance - a.avgAttendance);
   }, [sessionsData]);
+
+  // Revenue by category - moved to top
+  const categoryRevenue = useMemo(() => {
+    if (!salesData) return [];
+    const categoryRev = salesData.reduce((acc, sale) => {
+      const category = sale.cleanedCategory || 'Unknown';
+      acc[category] = (acc[category] || 0) + (sale.netRevenue || 0);
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(categoryRev)
+      .map(([category, revenue]) => ({ category, revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [salesData]);
+
+  const handleDrillDown = (data: any[], type: any) => {
+    setDrillDownModal({
+      isOpen: true,
+      data,
+      type
+    });
+  };
+
+  // Enhanced metric cards with drill-down
+  const metricCards = [
+    {
+      title: 'Total Revenue',
+      value: `₹${metrics.totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
+      trend: '+12.5%',
+      trendUp: true,
+      description: 'Total revenue across all locations',
+      onClick: () => handleDrillDown(salesData || [], 'metric')
+    },
+    {
+      title: 'Total Transactions',
+      value: metrics.totalTransactions.toLocaleString(),
+      icon: CreditCard,
+      trend: '+8.2%',
+      trendUp: true,
+      description: 'Number of completed transactions',
+      onClick: () => handleDrillDown(salesData || [], 'metric')
+    },
+    {
+      title: 'Total Sessions',
+      value: metrics.totalSessions.toLocaleString(),
+      icon: Activity,
+      trend: '+15.3%',
+      trendUp: true,
+      description: 'Classes conducted across all locations',
+      onClick: () => handleDrillDown(sessionsData || [], 'metric')
+    },
+    {
+      title: 'New Clients',
+      value: metrics.totalNewClients.toLocaleString(),
+      icon: UserPlus,
+      trend: '+22.1%',
+      trendUp: true,
+      description: 'New member acquisitions',
+      onClick: () => handleDrillDown(newClientData || [], 'metric')
+    },
+    {
+      title: 'Avg Attendance',
+      value: metrics.avgSessionAttendance.toFixed(1),
+      icon: Users,
+      trend: '+5.8%',
+      trendUp: true,
+      description: 'Average session attendance',
+      onClick: () => handleDrillDown(sessionsData || [], 'metric')
+    },
+    {
+      title: 'Conversion Rate',
+      value: `${metrics.conversionRate.toFixed(1)}%`,
+      icon: Target,
+      trend: '+3.2%',
+      trendUp: true,
+      description: 'Trial to member conversion',
+      onClick: () => handleDrillDown(newClientData?.filter(client => client.conversionStatus === 'Converted') || [], 'metric')
+    }
+  ];
 
   if (salesLoading || sessionsLoading || newClientLoading) {
     return (
@@ -455,15 +402,8 @@ const ExecutiveSummarySection = () => {
                         key={location.location}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
                         onClick={() => handleDrillDown(
-                          `${location.location} Performance`,
                           salesData?.filter(sale => sale.calculatedLocation === location.location) || [],
-                          'location',
-                          [
-                            { key: 'customerName', header: 'Customer' },
-                            { key: 'paymentDate', header: 'Date' },
-                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-                            { key: 'soldBy', header: 'Sold By' }
-                          ]
+                          'location'
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -497,15 +437,8 @@ const ExecutiveSummarySection = () => {
                         key={trainer.trainer}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
                         onClick={() => handleDrillDown(
-                          `${trainer.trainer} Performance`,
                           salesData?.filter(sale => sale.soldBy === trainer.trainer) || [],
-                          'trainer',
-                          [
-                            { key: 'customerName', header: 'Customer' },
-                            { key: 'paymentDate', header: 'Date' },
-                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-                            { key: 'calculatedLocation', header: 'Location' }
-                          ]
+                          'trainer'
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -544,20 +477,12 @@ const ExecutiveSummarySection = () => {
                         key={trend.month}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-green-50 transition-colors cursor-pointer"
                         onClick={() => handleDrillDown(
-                          `Revenue for ${trend.month}`,
                           salesData?.filter(sale => {
                             const saleDate = new Date(sale.paymentDate);
                             const monthKey = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, '0')}`;
                             return monthKey === trend.month;
                           }) || [],
-                          'metric',
-                          [
-                            { key: 'customerName', header: 'Customer' },
-                            { key: 'paymentDate', header: 'Date' },
-                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-                            { key: 'calculatedLocation', header: 'Location' },
-                            { key: 'soldBy', header: 'Sold By' }
-                          ]
+                          'metric'
                         )}
                       >
                         <span className="font-medium text-slate-700">{trend.month}</span>
@@ -578,32 +503,13 @@ const ExecutiveSummarySection = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {useMemo(() => {
-                      if (!salesData) return [];
-                      const categoryRevenue = salesData.reduce((acc, sale) => {
-                        const category = sale.cleanedCategory || 'Unknown';
-                        acc[category] = (acc[category] || 0) + (sale.netRevenue || 0);
-                        return acc;
-                      }, {} as Record<string, number>);
-                      
-                      return Object.entries(categoryRevenue)
-                        .map(([category, revenue]) => ({ category, revenue }))
-                        .sort((a, b) => b.revenue - a.revenue)
-                        .slice(0, 5);
-                    }, [salesData]).map((category, index) => (
+                    {categoryRevenue.map((category, index) => (
                       <div 
                         key={category.category}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
                         onClick={() => handleDrillDown(
-                          `${category.category} Sales`,
                           salesData?.filter(sale => sale.cleanedCategory === category.category) || [],
-                          'category',
-                          [
-                            { key: 'customerName', header: 'Customer' },
-                            { key: 'cleanedProduct', header: 'Product' },
-                            { key: 'netRevenue', header: 'Revenue', render: (value: number) => `₹${value?.toLocaleString() || 0}` },
-                            { key: 'soldBy', header: 'Sold By' }
-                          ]
+                          'category'
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -639,16 +545,8 @@ const ExecutiveSummarySection = () => {
                         key={cls.classType}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer"
                         onClick={() => handleDrillDown(
-                          `${cls.classType} Sessions`,
                           sessionsData?.filter(session => session.classType === cls.classType) || [],
-                          'metric',
-                          [
-                            { key: 'date', header: 'Date' },
-                            { key: 'instructor', header: 'Instructor' },
-                            { key: 'location', header: 'Location' },
-                            { key: 'checkedIn', header: 'Attendance' },
-                            { key: 'capacity', header: 'Capacity' }
-                          ]
+                          'metric'
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -681,26 +579,15 @@ const ExecutiveSummarySection = () => {
                       <div 
                         key={`${session.sessionId}-${index}`}
                         className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer"
-                        onClick={() => handleDrillDown(
-                          `Session Details`,
-                          [session],
-                          'metric',
-                          [
-                            { key: 'date', header: 'Date' },
-                            { key: 'classType', header: 'Class Type' },
-                            { key: 'instructor', header: 'Instructor' },
-                            { key: 'location', header: 'Location' },
-                            { key: 'checkedIn', header: 'Attendance' }
-                          ]
-                        )}
+                        onClick={() => handleDrillDown([session], 'metric')}
                       >
                         <div>
                           <div className="font-medium text-slate-700">{session.classType}</div>
-                          <div className="text-xs text-slate-500">{session.date} • {session.instructor}</div>
+                          <div className="text-xs text-slate-500">{session.date} • {session.trainerName}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-purple-600">{session.checkedIn}/{session.capacity}</div>
-                          <div className="text-xs text-slate-500">{session.fillPercentage.toFixed(1)}% full</div>
+                          <div className="font-bold text-purple-600">{session.checkedInCount}/{session.capacity}</div>
+                          <div className="text-xs text-slate-500">{session.fillPercentage?.toFixed(1) || 0}% full</div>
                         </div>
                       </div>
                     ))}
@@ -797,10 +684,8 @@ const ExecutiveSummarySection = () => {
       <DrillDownModal
         isOpen={drillDownModal.isOpen}
         onClose={() => setDrillDownModal(prev => ({ ...prev, isOpen: false }))}
-        title={drillDownModal.title}
         data={drillDownModal.data}
         type={drillDownModal.type}
-        columns={drillDownModal.columns}
       />
     </div>
   );
