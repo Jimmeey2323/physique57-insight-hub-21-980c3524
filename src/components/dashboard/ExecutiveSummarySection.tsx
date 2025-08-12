@@ -9,7 +9,6 @@ import { useSalesData } from '@/hooks/useSalesData';
 import { useSessionsData } from '@/hooks/useSessionsData';
 import { usePayrollData } from '@/hooks/usePayrollData';
 import { useNewClientData } from '@/hooks/useNewClientData';
-import { FilterSection } from './FilterSection';
 import { DrillDownModal } from './DrillDownModal';
 import { formatCurrency, formatNumber, formatPercentage } from '@/utils/formatters';
 import { 
@@ -26,16 +25,17 @@ import {
   Navigation,
   Sparkles,
   ChevronRight,
-  Eye
+  Eye,
+  Filter
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { cn } from '@/lib/utils';
 
 const ExecutiveSummarySection = () => {
   const { data: salesData, isLoading: salesLoading, error: salesError } = useSalesData();
-  const { data: sessionsData, isLoading: sessionsLoading, error: sessionsError } = useSessionsData();
+  const { data: sessionsData, loading: sessionsLoading, error: sessionsError } = useSessionsData();
   const { data: payrollData, isLoading: payrollLoading, error: payrollError } = usePayrollData();
-  const { data: clientData, isLoading: clientLoading, error: clientError } = useNewClientData();
+  const { data: clientData, loading: clientLoading, error: clientError } = useNewClientData();
 
   const [selectedTab, setSelectedTab] = useState('overview');
   const [drillDownData, setDrillDownData] = useState<any>(null);
@@ -209,10 +209,13 @@ const ExecutiveSummarySection = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
-        {/* Collapsed Filter Section */}
+        {/* Simple Filter Section */}
         <Card className="mb-8 bg-white/70 backdrop-blur-sm border-0 shadow-xl">
           <CardContent className="p-4">
-            <FilterSection />
+            <div className="flex items-center gap-2 text-slate-600">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">All data is displayed without filters</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -526,7 +529,7 @@ const ExecutiveSummarySection = () => {
                     <div className="text-2xl font-bold text-slate-900">
                       {index === 0 ? formatNumber(Number(metric.value)) : 
                        index === 1 ? `${metric.value}%` :
-                       metric.value}
+                       String(metric.value)}
                     </div>
                     <div className="text-sm text-slate-600">{metric.title}</div>
                   </CardContent>
