@@ -23,7 +23,7 @@ import { useSalesData } from '@/hooks/useSalesData';
 import { useSessionsData } from '@/hooks/useSessionsData';
 import { useNewClientData } from '@/hooks/useNewClientData';
 import { useLeadsData } from '@/hooks/useLeadsData';
-import { useTrainerData } from '@/hooks/usePayrollData';
+import { usePayrollData } from '@/hooks/usePayrollData';
 import { DrillDownModal } from '@/components/dashboard/DrillDownModal';
 import { useNavigate } from 'react-router-dom';
 
@@ -94,7 +94,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   const { data: sessionsData, loading: sessionsLoading } = useSessionsData();
   const { data: newClientData, loading: newClientLoading } = useNewClientData();
   const { data: leadsData, loading: leadsLoading } = useLeadsData();
-  const { data: trainerData, loading: trainerLoading } = useTrainerData();
+  const { data: payrollData, isLoading: payrollLoading } = usePayrollData();
 
   // State for drill-down modals
   const [modalState, setModalState] = useState<{
@@ -111,11 +111,11 @@ export const ExecutiveSummarySection: React.FC = () => {
 
   // Calculate key metrics
   const totalRevenue = useMemo(() => {
-    return salesData.reduce((sum, sale) => sum + (sale.totalPrice || 0), 0);
+    return salesData.reduce((sum, sale) => sum + (sale.paymentValue || 0), 0);
   }, [salesData]);
 
   const totalAttendance = useMemo(() => {
-    return sessionsData.reduce((sum, session) => sum + (session.attendance || 0), 0);
+    return sessionsData.reduce((sum, session) => sum + (session.checkedIn || 0), 0);
   }, [sessionsData]);
 
   const totalNewClients = newClientData.length;
@@ -129,8 +129,8 @@ export const ExecutiveSummarySection: React.FC = () => {
 
   // Top performing trainers
   const topTrainers = useMemo(() => {
-    const trainerStats = trainerData.reduce((acc, trainer) => {
-      const name = (trainer as any).name || 'Unknown';
+    const trainerStats = payrollData.reduce((acc, trainer) => {
+      const name = trainer.teacherName || 'Unknown';
       if (!acc[name]) {
         acc[name] = {
           name,
@@ -139,16 +139,15 @@ export const ExecutiveSummarySection: React.FC = () => {
           totalEarnings: 0
         };
       }
-      acc[name].totalHours += (trainer as any).hours || 0;
-      acc[name].totalSessions += 1;
-      acc[name].totalEarnings += (trainer as any).totalPay || 0;
+      acc[name].totalSessions += trainer.totalSessions || 0;
+      acc[name].totalEarnings += trainer.totalPaid || 0;
       return acc;
     }, {} as Record<string, any>);
 
     return Object.values(trainerStats)
       .sort((a: any, b: any) => b.totalEarnings - a.totalEarnings)
       .slice(0, 5);
-  }, [trainerData]);
+  }, [payrollData]);
 
   // Top performing products
   const topProducts = useMemo(() => {
@@ -162,9 +161,9 @@ export const ExecutiveSummarySection: React.FC = () => {
           totalQuantity: 0
         };
       }
-      acc[product].totalRevenue += sale.totalPrice || 0;
+      acc[product].totalRevenue += sale.paymentValue || 0;
       acc[product].totalSales += 1;
-      acc[product].totalQuantity += sale.quantity || 1;
+      acc[product].totalQuantity += 1;
       return acc;
     }, {} as Record<string, any>);
 
@@ -176,7 +175,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   // Monthly revenue trend
   const monthlyRevenue = useMemo(() => {
     const monthlyData = salesData.reduce((acc, sale) => {
-      const date = new Date(sale.saleDate || sale.date);
+      const date = new Date(sale.paymentDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       
       if (!acc[monthKey]) {
@@ -186,7 +185,7 @@ export const ExecutiveSummarySection: React.FC = () => {
           sales: 0
         };
       }
-      acc[monthKey].revenue += sale.totalPrice || 0;
+      acc[monthKey].revenue += sale.paymentValue || 0;
       acc[monthKey].sales += 1;
       return acc;
     }, {} as Record<string, any>);
@@ -229,7 +228,7 @@ export const ExecutiveSummarySection: React.FC = () => {
     });
   };
 
-  if (salesLoading || sessionsLoading || newClientLoading || leadsLoading || trainerLoading) {
+  if (salesLoading || sessionsLoading || newClientLoading || leadsLoading || payrollLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -274,9 +273,9 @@ export const ExecutiveSummarySection: React.FC = () => {
             salesData,
             'Revenue Breakdown',
             [
-              { key: 'saleDate', label: 'Date' },
+              { key: 'paymentDate', label: 'Date' },
               { key: 'cleanedProduct', label: 'Product' },
-              { key: 'totalPrice', label: 'Amount' },
+              { key: 'paymentValue', label: 'Amount' },
               { key: 'paymentMethod', label: 'Payment Method' }
             ]
           )}
@@ -294,8 +293,8 @@ export const ExecutiveSummarySection: React.FC = () => {
             [
               { key: 'date', label: 'Date' },
               { key: 'classType', label: 'Class Type' },
-              { key: 'attendance', label: 'Attendance' },
-              { key: 'trainer', label: 'Trainer' }
+              { key: 'checkedIn', label: 'Attendance' },
+              { key: 'instructor', label: 'Trainer' }
             ]
           )}
         />
@@ -310,10 +309,10 @@ export const ExecutiveSummarySection: React.FC = () => {
             newClientData,
             'New Clients',
             [
-              { key: 'joiningDate', label: 'Joining Date' },
-              { key: 'name', label: 'Name' },
-              { key: 'membershipType', label: 'Membership' },
-              { key: 'amount', label: 'Amount' }
+              { key: 'firstVisitDate', label: 'Joining Date' },
+              { key: 'firstName', label: 'Name' },
+              { key: 'membershipUsed', label: 'Membership' },
+              { key: 'ltv', label: 'Amount' }
             ]
           )}
         />
@@ -548,9 +547,11 @@ export const ExecutiveSummarySection: React.FC = () => {
         isOpen={modalState.isOpen}
         onClose={closeDrillDown}
         data={modalState.data}
-        type={modalState.type}
+        type={'metric' as const}
         columns={modalState.columns}
       />
     </div>
   );
 };
+
+export default ExecutiveSummarySection;
