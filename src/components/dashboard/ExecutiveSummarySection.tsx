@@ -101,12 +101,12 @@ export const ExecutiveSummarySection: React.FC = () => {
     isOpen: boolean;
     data: any[];
     type: string;
-    columns: any[];
+    title: string;
   }>({
     isOpen: false,
     data: [],
     type: '',
-    columns: []
+    title: ''
   });
 
   // Calculate key metrics
@@ -115,7 +115,7 @@ export const ExecutiveSummarySection: React.FC = () => {
   }, [salesData]);
 
   const totalAttendance = useMemo(() => {
-    return sessionsData.reduce((sum, session) => sum + (session.checkedIn || 0), 0);
+    return sessionsData.reduce((sum, session) => sum + (session.checkedInCount || 0), 0);
   }, [sessionsData]);
 
   const totalNewClients = newClientData.length;
@@ -210,12 +210,12 @@ export const ExecutiveSummarySection: React.FC = () => {
     };
   }, [leadsData]);
 
-  const openDrillDown = (data: any[], type: string, columns: any[]) => {
+  const openDrillDown = (data: any[], type: string, title: string) => {
     setModalState({
       isOpen: true,
       data,
       type,
-      columns
+      title
     });
   };
 
@@ -224,7 +224,7 @@ export const ExecutiveSummarySection: React.FC = () => {
       isOpen: false,
       data: [],
       type: '',
-      columns: []
+      title: ''
     });
   };
 
@@ -272,12 +272,7 @@ export const ExecutiveSummarySection: React.FC = () => {
           onClick={() => openDrillDown(
             salesData,
             'Revenue Breakdown',
-            [
-              { key: 'paymentDate', label: 'Date' },
-              { key: 'cleanedProduct', label: 'Product' },
-              { key: 'paymentValue', label: 'Amount' },
-              { key: 'paymentMethod', label: 'Payment Method' }
-            ]
+            'Revenue Details'
           )}
         />
         
@@ -290,12 +285,7 @@ export const ExecutiveSummarySection: React.FC = () => {
           onClick={() => openDrillDown(
             sessionsData,
             'Attendance Details',
-            [
-              { key: 'date', label: 'Date' },
-              { key: 'classType', label: 'Class Type' },
-              { key: 'checkedIn', label: 'Attendance' },
-              { key: 'instructor', label: 'Trainer' }
-            ]
+            'Session Attendance'
           )}
         />
         
@@ -308,12 +298,7 @@ export const ExecutiveSummarySection: React.FC = () => {
           onClick={() => openDrillDown(
             newClientData,
             'New Clients',
-            [
-              { key: 'firstVisitDate', label: 'Joining Date' },
-              { key: 'firstName', label: 'Name' },
-              { key: 'membershipUsed', label: 'Membership' },
-              { key: 'ltv', label: 'Amount' }
-            ]
+            'New Client Details'
           )}
         />
         
@@ -326,12 +311,7 @@ export const ExecutiveSummarySection: React.FC = () => {
           onClick={() => openDrillDown(
             leadsData,
             'Leads Overview',
-            [
-              { key: 'date', label: 'Date' },
-              { key: 'source', label: 'Source' },
-              { key: 'stage', label: 'Stage' },
-              { key: 'status', label: 'Status' }
-            ]
+            'Lead Details'
           )}
         />
       </div>
@@ -548,7 +528,10 @@ export const ExecutiveSummarySection: React.FC = () => {
         onClose={closeDrillDown}
         data={modalState.data}
         type={'metric' as const}
-        columns={modalState.columns}
+        columns={[
+          { key: 'date', header: 'Date' },
+          { key: 'value', header: 'Value' }
+        ]}
       />
     </div>
   );
