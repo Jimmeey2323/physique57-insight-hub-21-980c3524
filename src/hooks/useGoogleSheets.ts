@@ -3,13 +3,13 @@ import { useState, useEffect } from 'react';
 import { SalesData } from '@/types/dashboard';
 
 const GOOGLE_CONFIG = {
-  CLIENT_ID: "416630995185-007ermh3iidknbbtdmu5vct207mdlbaa.apps.googleusercontent.com",
-  CLIENT_SECRET: "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",
-  REFRESH_TOKEN: "1//04MmvT_BibTsBCgYIARAAGAQSNwF-L9IrG9yxJvvQRMLPR39xzWSrqfTVMkvq3WcZqsDO2HjUkV6s7vo1pQkex4qGF3DITTiweAA",
+  CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "416630995185-007ermh3iidknbbtdmu5vct207mdlbaa.apps.googleusercontent.com",
+  CLIENT_SECRET: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || "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",
+  REFRESH_TOKEN: import.meta.env.VITE_GOOGLE_REFRESH_TOKEN || "1//04MmvT_BibTsBCgYIARAAGAQSNwF-L9IrG9yxJvvQRMLPR39xzWSrqfTVMkvq3WcZqsDO2HjUkV6s7vo1pQkex4qGF3DITTiweAA",
   TOKEN_URL: "https://oauth2.googleapis.com/token"
 };
 
-const SPREADSHEET_ID = "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
+const SPREADSHEET_ID = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
 
 export const useGoogleSheets = () => {
   const [data, setData] = useState<SalesData[]>([]);
@@ -32,6 +32,18 @@ export const useGoogleSheets = () => {
       });
 
       const tokenData = await response.json();
+      
+      if (tokenData.error) {
+        if (tokenData.error === 'invalid_grant') {
+          throw new Error('Google OAuth token has expired. Please regenerate the refresh token.');
+        }
+        throw new Error(`OAuth error: ${tokenData.error} - ${tokenData.error_description}`);
+      }
+      
+      if (!tokenData.access_token) {
+        throw new Error('No access token received from Google OAuth');
+      }
+      
       return tokenData.access_token;
     } catch (error) {
       console.error('Error getting access token:', error);
@@ -65,44 +77,36 @@ export const useGoogleSheets = () => {
         return;
       }
 
+      const headers = rows[0];
       const salesData: SalesData[] = rows.slice(1).map((row: any[]) => ({
         memberId: row[0] || '',
         customerName: row[1] || '',
         customerEmail: row[2] || '',
-        payingMemberId: row[0] || '', // Using Member ID for consistency
         saleItemId: row[3] || '',
         paymentCategory: row[4] || '',
-        membershipType: row[24] || '',
-        paymentDate: row[5] || '',
-        paymentValue: parseFloat(row[6]) || 0,
-        paidInMoneyCredits: parseFloat(row[7]) || 0,
-        paymentVAT: parseFloat(row[8]) || 0,
-        paymentItem: row[9] || '',
+        membershipType: row[5] || '',
+        paymentDate: row[6] || '',
+        paymentValue: parseFloat(row[7]) || 0,
+        paidInMoneyCredits: parseFloat(row[8]) || 0,
+        paymentVAT: parseFloat(row[9]) || 0,
+        paymentItem: row[10] || '',
         paymentStatus: row[11] || '',
-        paymentMethod: row[10] || '',
-        paymentTransactionId: row[12] || '',
-        stripeToken: row[13] || '',
-        soldBy: row[14] || '',
-        saleReference: row[15] || '',
-        calculatedLocation: row[16] || '',
-        cleanedProduct: row[17] || '',
-        cleanedCategory: row[18] || '',
-        discountAmount: parseFloat(row[22]) || 0,
-        grossRevenue: parseFloat(row[21]) || 0, // MRP Post Tax
-        preTaxMrp: parseFloat(row[20]) || 0, // MRP Pre Tax
-        vat: parseFloat(row[8]) || 0, // Payment VAT
-        netRevenue: parseFloat(row[6]) || 0, // Payment Value
-        postTaxMrp: parseFloat(row[21]) || 0, // MRP Post Tax
-        grossDiscountPercent: parseFloat(row[23]) || 0,
-        netDiscountPercent: parseFloat(row[23]) || 0
+        paymentMethod: row[12] || '',
+        paymentTransactionId: row[13] || '',
+        stripeToken: row[14] || '',
+        soldBy: row[15] || '',
+        saleReference: row[16] || '',
+        calculatedLocation: row[17] || '',
+        cleanedProduct: row[18] || '',
+        cleanedCategory: row[19] || '',
       }));
 
-      console.log('Sales data loaded:', salesData.length, 'records');
       setData(salesData);
       setError(null);
     } catch (err) {
       console.error('Error fetching sales data:', err);
-      setError('Failed to load sales data');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load sales data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

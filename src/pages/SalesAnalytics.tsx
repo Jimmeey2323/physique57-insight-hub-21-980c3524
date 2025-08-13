@@ -3,12 +3,44 @@ import { SalesAnalyticsSection } from '@/components/dashboard/SalesAnalyticsSect
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Home, TrendingUp } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { Home, TrendingUp, RefreshCw } from 'lucide-react';
 import { Footer } from '@/components/ui/footer';
 
 const SalesAnalytics = () => {
-  const { data } = useGoogleSheets();
+  const { data, loading, error, refetch } = useGoogleSheets();
   const navigate = useNavigate();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <LoadingSkeleton type="full-page" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center p-4">
+        <Card className="p-8 bg-white/90 backdrop-blur-sm shadow-xl border-0 max-w-md">
+          <CardContent className="text-center space-y-4">
+            <RefreshCw className="w-12 h-12 text-red-600 mx-auto" />
+            <div>
+              <p className="text-lg font-semibold text-gray-800">Connection Error</p>
+              <p className="text-sm text-gray-600 mt-2">Failed to load sales data</p>
+            </div>
+            <Button onClick={refetch} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Retry Connection
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
