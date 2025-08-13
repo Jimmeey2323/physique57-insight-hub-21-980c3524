@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { SalesData } from '@/types/dashboard';
 
 const GOOGLE_CONFIG = {
+<<<<<<< HEAD
   CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "416630995185-007ermh3iidknbbtdmu5vct207mdlbaa.apps.googleusercontent.com",
   CLIENT_SECRET: import.meta.env.VITE_GOOGLE_CLIENT_SECRET || "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",
   REFRESH_TOKEN: import.meta.env.VITE_GOOGLE_REFRESH_TOKEN || "1//04MmvT_BibTsBCgYIARAAGAQSNwF-L9IrG9yxJvvQRMLPR39xzWSrqfTVMkvq3WcZqsDO2HjUkV6s7vo1pQkex4qGF3DITTiweAA",
@@ -10,6 +11,16 @@ const GOOGLE_CONFIG = {
 };
 
 const SPREADSHEET_ID = import.meta.env.VITE_GOOGLE_SPREADSHEET_ID || "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
+=======
+  CLIENT_ID: "416630995185-007ermh3iidknbbtdmu5vct207mdlbaa.apps.googleusercontent.com",
+  CLIENT_SECRET: "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",
+  REFRESH_TOKEN: "1//04pAfj5ZB3ahLCgYIARAAGAQSNwF-L9IrqCo4OyUjAbO1hP5bR3vhs8K96zDZkbeCzcuCjzEiBPZ3O639cLRkUduicMYK1Rzs5GY",
+  TOKEN_URL: "https://oauth2.googleapis.com/token"
+};
+
+
+const SPREADSHEET_ID = "149ILDqovzZA6FRUJKOwzutWdVqmqWBtWPfzG3A0zxTI";
+>>>>>>> f1ec4e85061c787773c284facc5ec11173e42791
 
 export const useGoogleSheets = () => {
   const [data, setData] = useState<SalesData[]>([]);
